@@ -3,7 +3,7 @@ import { mainButton, miniApp } from '@telegram-apps/sdk-react';
 import { ShoppingBag, Tag } from 'lucide-react';
 import './App.css';
 
-// Имитация базы данных товаров твоего магазина одежды
+// База данных товаров магазина одежды
 const CLOTHES_DATA = [
   { id: 1, name: 'Oversize Худи "Glass"', price: 4990, image: '🧥' },
   { id: 2, name: 'Футболка Dark Mode', price: 1990, image: '👕' },
@@ -14,41 +14,54 @@ const CLOTHES_DATA = [
 function App() {
   const [cart, setCart] = useState([]);
 
-  // Раскрываем мини-апп на максимум при загрузке
+  // 1. Инициализация и монтирование компонентов Telegram
   useEffect(() => {
     try {
-      if (miniApp.isMounted()) {
-        miniApp.expand();
-      }
-    } catch (e) {}
+      if (!miniApp.isMounted()) miniApp.mount();
+      if (!mainButton.isMounted()) mainButton.mount();
+
+      miniApp.expand(); // Раскрываем на весь экран
+    } catch (e) {
+      console.log('Запущено вне Telegram или ошибка монтирования SDK');
+    }
   }, []);
 
-  // Следим за корзиной. Если она не пустая — показываем MainButton Telegram внизу
+  // 2. Обработка клика по Главной Кнопке Telegram (MainButton)
+  // Используем отдельный useEffect, который срабатывает ОДИН раз при запуске
+  useEffect(() => {
+    const handleMainButtonClick = () => {
+      // Так как мы не можем напрямую прочитать актуальный cart внутри статичной функции,
+      // мы берем общую стоимость, которую запишем в data-атрибут или параметры кнопки
+      const currentText = mainButton.text();
+      // Вытаскиваем цифры стоимости из текста кнопки
+      const totalAmount = currentText.replace(/\D/g, ''); 
+      
+      handleCheckout(totalAmount);
+    };
+
+    try {
+      const unsubscribe = mainButton.onClick(handleMainButtonClick);
+      return () => unsubscribe(); // Чистим за собой при анмаунте приложения
+    } catch (e) {}
+  }, []); // Пустой массив зависимостей — функция вешается строго ОДИН раз
+
+  // 3. Синхронизация состояния корзины с внешним видом MainButton
   useEffect(() => {
     try {
-      const total = cart.reduce((sum, item) => sum + item.price, 0);
-      
       if (cart.length > 0) {
+        const total = cart.reduce((sum, item) => sum + item.price, 0);
+        
         mainButton.setParams({
-          text: `Оформить заказ: ${total} руб.`,
+          text: `Оформить заказ: ${total} ₽`,
           isVisible: true,
           isEnabled: true,
-          backgroundColor: '#3182ce',
+          backgroundColor: '#3b82f6', // Красивый синий цвет под наш дизайн
           textColor: '#ffffff'
         });
-
-        // Назначаем действие на клик по главной кнопке ТГ
-        const unsubscribe = mainButton.onClick(() => {
-          handleCheckout(total);
-        });
-
-        return () => unsubscribe();
       } else {
         mainButton.hide();
       }
-    } catch (e) {
-      // Игнорируем, если открыто в обычном браузере
-    }
+    } catch (e) {}
   }, [cart]);
 
   const addToCart = (product) => {
@@ -59,17 +72,27 @@ function App() {
     setCart([]);
   };
 
-  // Функция отправки заказа на бэкенд
+  // 4. Отправка заказа на твой Python бэкенд
   const handleCheckout = async (totalAmount) => {
-    alert(`Заказ на сумму ${totalAmount} руб. формируется!`);
-    // Здесь будет твой fetch-запрос к FastAPI бэкенду через localtunnel
-    /*
-    await fetch('https://your-backend.loca.lt/api/orders', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ items: cart, total: totalAmount })
-    });
-    */
+    alert(`Заказ на сумму ${totalAmount} ₽ формируется!`);
+    
+    // Когда запустишь FastAPI бэкенд и localtunnel, просто раскомментируй этот код:
+    try {
+      const response = await fetch('https://unlucky-seahorse-22.loca.lt/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          items: cart, 
+          total: totalAmount 
+        })
+      });
+      if (response.ok) {
+        alert('Заказ успешно отправлен на сервер!');
+        setCart([]); // Очищаем корзину после успешной покупки
+      }
+    } catch (error) {
+      alert('Ошибка отправки запроса на бэкенд');
+    }
   };
 
   return (
@@ -93,7 +116,9 @@ function App() {
             <h3 className="product-title">{product.name}</h3>
             <div className="product-footer">
               <span className="product-price">{product.price} ₽</span>
-              <button className="add-btn" onClick={() => addToCart(product)}>+ Добавить</button>
+              <button className="add-btn" onClick={() => addToCart(product)}>
+                + Добавить
+              </button>
             </div>
           </div>
         ))}
