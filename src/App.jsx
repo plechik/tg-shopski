@@ -78,7 +78,7 @@ function App() {
     
     // Когда запустишь FastAPI бэкенд и localtunnel, просто раскомментируй этот код:
     try {
-      const response = await fetch('https://unlucky-seahorse-22.loca.lt/', {
+      const response = await fetch('https://zolikshop.loca.lt/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
