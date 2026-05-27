@@ -72,12 +72,11 @@ async def create_order(order: Order):
 # --- ЛОГИКА ТЕЛЕГРАМ БОТА ---
 @dp.message(CommandStart())
 async def cmd_start(message: types.Message):
-    # Создаем красивую инлайн-кнопку, которая открывает Web App прямо в чате
     builder = InlineKeyboardBuilder()
     builder.row(
         types.InlineKeyboardButton(
             text="🛍️ Открыть магазин",
-            web_app=types.WebAppInfo(url=MINI_APP_URL)
+            url=MINI_APP_URL  # 🔥 ЗАМЕНИЛИ web_app=types.WebAppInfo(...) НА ОБЫЧНЫЙ url
         )
     )
     

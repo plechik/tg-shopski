@@ -16,15 +16,17 @@ function App() {
 
   // 1. Инициализация и монтирование компонентов Telegram
   useEffect(() => {
-    try {
-      if (!miniApp.isMounted()) miniApp.mount();
-      if (!mainButton.isMounted()) mainButton.mount();
+    const handleMainButtonClick = () => {
+      // Вместо чтения текста кнопки, мы вызываем функцию оформления заказа,
+      // а всю актуальную информацию она возьмет из стейта корзины!
+      handleCheckout();
+    };
 
-      miniApp.expand(); // Раскрываем на весь экран
-    } catch (e) {
-      console.log('Запущено вне Telegram или ошибка монтирования SDK');
-    }
-  }, []);
+    try {
+      const unsubscribe = mainButton.onClick(handleMainButtonClick);
+      return () => unsubscribe(); 
+    } catch (e) {}
+  }, [cart]);
 
   // 2. Обработка клика по Главной Кнопке Telegram (MainButton)
   // Используем отдельный useEffect, который срабатывает ОДИН раз при запуске
@@ -55,7 +57,7 @@ function App() {
           text: `Оформить заказ: ${total} ₽`,
           isVisible: true,
           isEnabled: true,
-          backgroundColor: '#3b82f6', // Красивый синий цвет под наш дизайн
+          backgroundColor: '#3b82f6', 
           textColor: '#ffffff'
         });
       } else {
@@ -73,9 +75,11 @@ function App() {
   };
 
   // 4. Отправка заказа на твой Python бэкенд
-  const handleCheckout = async (totalAmount) => {
-    // Безопасно переводим строку с суммой в нормальное число (Integer)
-    const parsedTotal = parseInt(totalAmount, 10) || 0;
+  const handleCheckout = async () => {
+    // Считаем чистую сумму прямо из массива корзины (гарантирует тип Number)
+    const totalAmount = cart.reduce((sum, item) => sum + item.price, 0);
+
+    if (cart.length === 0) return;
 
     try {
       const response = await fetch('https://zolikstore.loca.lt/api/orders', {
@@ -85,7 +89,7 @@ function App() {
         },
         body: JSON.stringify({ 
           items: cart, 
-          total: parsedTotal // Теперь это 100% валидное число для Pydantic (FastAPI)
+          total: totalAmount // Передаем чистый int, который на 100% примет Pydantic
         })
       });
       
