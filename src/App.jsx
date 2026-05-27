@@ -16,6 +16,19 @@ function App() {
 
   // 1. Инициализация и монтирование компонентов Telegram
   useEffect(() => {
+    try {
+      if (!miniApp.isMounted()) miniApp.mount();
+      if (!mainButton.isMounted()) mainButton.mount();
+
+      miniApp.expand(); // Раскрываем на весь экран
+    } catch (e) {
+      console.log('Запущено вне Telegram или ошибка монтирования SDK');
+    }
+  }, []);
+
+  // 2. Обработка клика по Главной Кнопке Telegram (MainButton)
+  // Используем отдельный useEffect, который срабатывает ОДИН раз при запуске
+  useEffect(() => {
     const handleMainButtonClick = () => {
       // Вместо чтения текста кнопки, мы вызываем функцию оформления заказа,
       // а всю актуальную информацию она возьмет из стейта корзины!
@@ -26,26 +39,7 @@ function App() {
       const unsubscribe = mainButton.onClick(handleMainButtonClick);
       return () => unsubscribe(); 
     } catch (e) {}
-  }, [cart]);
-
-  // 2. Обработка клика по Главной Кнопке Telegram (MainButton)
-  // Используем отдельный useEffect, который срабатывает ОДИН раз при запуске
-  useEffect(() => {
-    const handleMainButtonClick = () => {
-      // Так как мы не можем напрямую прочитать актуальный cart внутри статичной функции,
-      // мы берем общую стоимость, которую запишем в data-атрибут или параметры кнопки
-      const currentText = mainButton.text();
-      // Вытаскиваем цифры стоимости из текста кнопки
-      const totalAmount = currentText.replace(/\D/g, ''); 
-      
-      handleCheckout(totalAmount);
-    };
-
-    try {
-      const unsubscribe = mainButton.onClick(handleMainButtonClick);
-      return () => unsubscribe(); // Чистим за собой при анмаунте приложения
-    } catch (e) {}
-  }, []); // Пустой массив зависимостей — функция вешается строго ОДИН раз
+  }, [cart]); // Пустой массив зависимостей — функция вешается строго ОДИН раз
 
   // 3. Синхронизация состояния корзины с внешним видом MainButton
   useEffect(() => {
