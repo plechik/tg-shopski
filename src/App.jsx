@@ -78,7 +78,7 @@ function App() {
     
     // Когда запустишь FastAPI бэкенд и localtunnel, просто раскомментируй этот код:
     try {
-      const response = await fetch('https://zolikshop.loca.lt/api/orders', {
+      const response = await fetch('https://zolikstore.loca.lt/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -98,7 +98,7 @@ function App() {
   return (
     <div className="shop-container">
       <header className="shop-header">
-        <h1>⚡ TG Wear</h1>
+        <h1>⚡ ZolikStore</h1>
         <div className="cart-badge">
           <ShoppingBag size={20} />
           <span>{cart.length}</span>
