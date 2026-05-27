@@ -1,20 +1,19 @@
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import App from './App.jsx'
-import './index.css'
-import { init, AppRoot } from '@telegram-apps/sdk-react'
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App.jsx';
+import './index.css';
+import { init } from '@telegram-apps/sdk-react';
 
-// Инициализируем SDK Telegram Mini Apps
+// Инициализируем Telegram SDK. 
+// acceptCustomStyles позволяет приложению подстраиваться под темную/светлую тему ТГ.
 try {
-  init();
-} catch (error) {
-  console.error("Ошибка инициализации SDK:", error);
+  init({ acceptCustomStyles: true });
+} catch (e) {
+  console.log("Приложение запущенно вне Telegram (в обычном браузере)");
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <AppRoot>
-      <App />
-    </AppRoot>
+    <App />
   </React.StrictMode>,
-)
+);
