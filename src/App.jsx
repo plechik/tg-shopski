@@ -74,24 +74,29 @@ function App() {
 
   // 4. Отправка заказа на твой Python бэкенд
   const handleCheckout = async (totalAmount) => {
-    alert(`Заказ на сумму ${totalAmount} ₽ формируется!`);
-    
-    // Когда запустишь FastAPI бэкенд и localtunnel, просто раскомментируй этот код:
+    // Безопасно переводим строку с суммой в нормальное число (Integer)
+    const parsedTotal = parseInt(totalAmount, 10) || 0;
+
     try {
       const response = await fetch('https://zolikstore.loca.lt/api/orders', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json' 
+        },
         body: JSON.stringify({ 
           items: cart, 
-          total: totalAmount 
+          total: parsedTotal // Теперь это 100% валидное число для Pydantic (FastAPI)
         })
       });
+      
       if (response.ok) {
-        alert('Заказ успешно отправлен на сервер!');
+        alert('Заказ успешно отправлен на бэкенд!');
         setCart([]); // Очищаем корзину после успешной покупки
+      } else {
+        alert('Сервер вернул ошибку: ' + response.status);
       }
     } catch (error) {
-      alert('Ошибка отправки запроса на бэкенд');
+      alert('Не удалось достучаться до бэкенда: ' + error.message);
     }
   };
 
