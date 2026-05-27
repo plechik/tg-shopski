@@ -5,9 +5,9 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: {
-    allowedHosts: [
-      'zolikstore.loca.lt' // Разрешаем Vite принимать запросы от твоего localtunnel
-    ]
-    // allowedHosts: True,
+    // allowedHosts: [
+    //   'zolikstore.loca.lt' // Разрешаем Vite принимать запросы от твоего localtunnel
+    // ]
+    allowedHosts: true,
   }
 })
