@@ -63,10 +63,13 @@ async def create_order(order: Order):
     for item in order.items:
         print(f"  - {item.name} | Цена: {item.price} руб. {item.image}")
     
-    # Тут можно добавить отправку уведомления админу в ТГ, если знаешь свой chat_id:
-    # await bot.send_message(chat_id=АДМИН_ID, text=f"Новый заказ на {order.total} руб!")
+    await bot.send_message(
+        chat_id=1160765121,
+        text=f"Новый заказ на {order.total} руб\n"
+            "Товары:\n" + "\n".join([f"{item.name} | {item.price} руб." for item in order.items])
+        )
     
-    return {"status": "success", "message": "Заказ обработан бэкендом"}
+    return {"status": "success"}
 
 
 # --- ЛОГИКА ТЕЛЕГРАМ БОТА ---
@@ -76,12 +79,12 @@ async def cmd_start(message: types.Message):
     builder.row(
         types.InlineKeyboardButton(
             text="🛍️ Открыть магазин",
-            url=MINI_APP_URL  # 🔥 ЗАМЕНИЛИ web_app=types.WebAppInfo(...) НА ОБЫЧНЫЙ url
+            url=MINI_APP_URL
         )
     )
     
     await message.answer(
-        f"Привет, {message.from_user.first_name}! 👋\n\n"
+        f"Привет, {message.from_user.first_name}!\n\n"
         "Добро пожаловать в **ZolikStore** — самый технологичный магазин одежды.\n"
         "Нажми на кнопку ниже, чтобы открыть каталог товаров 👇",
         reply_markup=builder.as_markup(),
@@ -91,3 +94,7 @@ async def cmd_start(message: types.Message):
 if __name__ == "__main__":
     # Запускаем FastAPI сервер
     uvicorn.run(app, host="127.0.0.1", port=8000)
+
+
+
+# npx localtunnel --port 8000 --subdomain zolikstore

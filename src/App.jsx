@@ -7,8 +7,11 @@ import './App.css';
 const CLOTHES_DATA = [
   { id: 1, name: 'Oversize Худи "Glass"', price: 4990, image: '🧥' },
   { id: 2, name: 'Футболка Dark Mode', price: 1990, image: '👕' },
-  { id: 3, name: 'Джоггеры FastAPI Async', price: 3990, image: '👖' },
+  { id: 3, name: 'Джоггеры FastAPI Async', price: 3990, image: '../images/joggers.webp' },
   { id: 4, name: 'Кепка Python Developer', price: 1490, image: '🧢' },
+  { id: 5, name: 'Кроссовки "Telegram Runner"', price: 5990, image: '👟' },
+  { id: 6, name: 'Рюкзак "Data Science"', price: 2990, image: '🎒' },
+  { id: 7, name: 'Куртка "AI Shield"', price: 6990, image: '🧥' },
 ];
 
 function App() {
@@ -109,7 +112,7 @@ function App() {
       </header>
 
       <div className="promo-banner">
-        <Tag size={16} /> <span>Новая коллекция 2026 уже в наличии</span>
+        <Tag size={16} /> <span>Егорка_комутатор лучший репер</span>
       </div>
 
       <main className="products-grid">
