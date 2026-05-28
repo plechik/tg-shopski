@@ -7,7 +7,7 @@ import './App.css';
 const CLOTHES_DATA = [
   { id: 1, name: 'Oversize Худи "Glass"', price: 4990, image: '🧥' },
   { id: 2, name: 'Футболка Dark Mode', price: 1990, image: '👕' },
-  { id: 3, name: 'Джоггеры FastAPI Async', price: 3990, image: '../images/joggers.webp' },
+  { id: 3, name: 'Джоггеры FastAPI Async', price: 3990, image: '👖' },
   { id: 4, name: 'Кепка Python Developer', price: 1490, image: '🧢' },
   { id: 5, name: 'Кроссовки "Telegram Runner"', price: 5990, image: '👟' },
   { id: 6, name: 'Рюкзак "Data Science"', price: 2990, image: '🎒' },
