@@ -62,6 +62,7 @@ class Item(BaseModel):
     name: str
     price: int
     image: str
+    quantity: int = 1
 
 class Order(BaseModel):
     items: List[Item]
@@ -78,7 +79,7 @@ async def create_order(order: Order):
     
     # Отправка уведомления администратору в Telegram
     try:
-        items_text = "\n".join([f"• {item.name} ({item.price} руб.)" for item in order.items])
+        items_text = "\n".join([f"• {item.name} — **{item.quantity} шт.** x {item.price} руб." for item in order.items])
         await bot.send_message(
             chat_id=1160765121,
             text=f"🛍️ **Новый заказ!**\n\n"
