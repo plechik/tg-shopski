@@ -1,4 +1,5 @@
 import asyncio
+import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -6,7 +7,6 @@ from pydantic import BaseModel
 from typing import List
 import uvicorn
 
-# Импортируем всё необходимое из aiogram 3.x
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import CommandStart
 from aiogram.utils.keyboard import InlineKeyboardBuilder
@@ -18,13 +18,30 @@ MINI_APP_URL = "https://t.me/zolikstore_bot/app"
 PROXY_URL = 'http://127.0.0.1:12334'
 # =================================================
 
+# Автоматически проверяем, запущены ли мы на сервере Render
+IS_RENDER = os.environ.get("PORT") is not None
+
+# Инициализируем сессию в зависимости от того, где запущен код
+if IS_RENDER:
+    # На Render прокси НЕ НУЖЕН, создаем стандартного бота
+    bot = Bot(token=BOT_TOKEN)
+    print("🌐 Бот инициализирован напрямую (для Render)")
+else:
+    # На локальном ПК используем твой прокси
+    session = AiohttpSession(proxy=PROXY_URL)
+    bot = Bot(token=BOT_TOKEN, session=session)
+    print("💻 Бот инициализирован через локальный прокси")
+
+dp = Dispatcher()
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Этот код выполнится НА СТАРТЕ приложения
-    asyncio.create_task(dp.start_polling(bot))
+    # Фоновое выполнение polling
+    polling_task = asyncio.create_task(dp.start_polling(bot))
     print("🤖 Бот успешно запущен в фоне (через Lifespan)!")
     yield
-    # Этот код выполнится ПРИ ОСТАНОВКЕ приложения
+    # При остановке сервера отменяем фоновую задачу бота и закрываем сессию
+    polling_task.cancel()
     await bot.session.close()
     print("🛑 Сессия бота закрыта.")
 
@@ -38,10 +55,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-session = AiohttpSession(proxy=PROXY_URL)
-bot = Bot(token=BOT_TOKEN)
-dp = Dispatcher()
 
 # --- СХЕМЫ ДАННЫХ ДЛЯ ЗАКАЗА ---
 class Item(BaseModel):
@@ -63,11 +76,18 @@ async def create_order(order: Order):
     for item in order.items:
         print(f"  - {item.name} | Цена: {item.price} руб. {item.image}")
     
-    await bot.send_message(
-        chat_id=1160765121,
-        text=f"Новый заказ на {order.total} руб\n"
-            "Товары:\n" + "\n".join([f"{item.name} | {item.price} руб." for item in order.items])
+    # Отправка уведомления администратору в Telegram
+    try:
+        items_text = "\n".join([f"• {item.name} ({item.price} руб.)" for item in order.items])
+        await bot.send_message(
+            chat_id=1160765121,
+            text=f"🛍️ **Новый заказ!**\n\n"
+                 f"**Товары:**\n{items_text}\n\n"
+                 f"💰 **Итого:** {order.total} руб.",
+            parse_mode="Markdown"
         )
+    except Exception as e:
+        print(f"Ошибка отправки сообщения в ТГ: {e}")
     
     return {"status": "success"}
 
@@ -92,7 +112,7 @@ async def cmd_start(message: types.Message):
     )
 
 if __name__ == "__main__":
-    # Запускаем FastAPI сервер
+    # Локальный запуск на ПК
     uvicorn.run(app, host="127.0.0.1", port=8000)
 
 

@@ -103,7 +103,7 @@ function App() {
     if (cart.length === 0) return;
 
     try {
-      const response = await fetch('https://zolikstore.loca.lt/api/orders', {
+      const response = await fetch('https://tg-shopski.onrender.com/api/orders', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json' 
