@@ -40,7 +40,7 @@ app.add_middleware(
 )
 
 session = AiohttpSession(proxy=PROXY_URL)
-bot = Bot(token=BOT_TOKEN, session=session)
+bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
 # --- СХЕМЫ ДАННЫХ ДЛЯ ЗАКАЗА ---
