@@ -89,22 +89,67 @@ body {
   backdrop-filter: blur(10px);
 }
 
+/* --- ОБНОВЛЕНО: Контейнер для картинок в сетке --- */
 .product-thumb {
+  position: relative;
   background: rgba(255, 255, 255, 0.03);
-  font-size: 48px;
-  height: 120px;
+  height: 140px; /* Немного увеличили высоту для лучшего отображения фото */
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 12px;
   margin-bottom: 12px;
+  overflow: hidden;
+  cursor: pointer;
 }
 
+/* Стили для самого изображения товара */
+.product-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* Картинка заполняет область без искажений */
+  transition: transform 0.3s ease;
+}
+
+/* Эффект увеличения картинки при наведении */
+.product-card:hover .product-thumb img {
+  transform: scale(1.05);
+}
+
+/* Полупрозрачная иконка "инфо" поверх фото */
+.info-overlay {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  color: #94a3b8;
+  padding: 6px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: color 0.2s, background 0.2s;
+}
+
+.product-card:hover .info-overlay {
+  color: var(--text-color);
+  background: rgba(59, 130, 246, 0.8); /* Подсвечиваем синим при наведении на карточку */
+}
+
+/* Заголовок теперь тоже кликабельный */
 .product-title {
   font-size: 15px;
   margin: 0 0 10px 0;
   font-weight: 600;
   min-height: 40px;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.product-title:hover {
+  color: #60a5fa;
 }
 
 .product-footer {
@@ -178,7 +223,8 @@ body {
   color: var(--text-color);
 }
 
-/* --- МОДАЛЬНОЕ ОКНО КОРЗИНЫ --- */
+/* --- ОБЩИЙ ПОРТАЛ СЛОЙ ДЛЯ МОДАЛОК (Задний фон) --- */
+.modal-overlay,
 .cart-modal-overlay {
   position: fixed;
   top: 0;
@@ -186,12 +232,100 @@ body {
   right: 0;
   bottom: 0;
   background: rgba(15, 23, 42, 0.6);
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(8px); /* Сделали размытие чуть сильнее для фокуса */
   display: flex;
-  align-items: flex-end; /* Окно мягко выезжает снизу экрана */
+  align-items: flex-end; /* Выезжают снизу */
   z-index: 999;
 }
 
+/* --- НОВОЕ: Модальное окно просмотра подробностей товара --- */
+.product-details-modal {
+  background: rgba(30, 41, 59, 0.85);
+  backdrop-filter: blur(20px);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  width: 100%;
+  border-radius: 24px 24px 0 0;
+  padding: 24px 20px;
+  max-height: 85vh;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 -10px 25px -5px rgba(0, 0, 0, 0.5);
+  box-sizing: border-box;
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.modal-image-container {
+  width: 100%;
+  height: 340px;
+  border-radius: 16px;
+  overflow: hidden;
+  margin-bottom: 16px;
+  border: 1px solid var(--border-glow);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.modal-image-container img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.modal-info {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.modal-info h2 {
+  margin: 0 0 8px 0;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.modal-description {
+  color: #94a3b8;
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 0 0 24px 0;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.modal-price {
+  font-size: 20px;
+  font-weight: 800;
+  color: #3b82f6;
+}
+
+.modal-add-btn {
+  background: var(--accent-color);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+}
+
+.modal-add-btn:hover {
+  background: #2563eb;
+}
+
+.modal-add-btn:active {
+  transform: scale(0.97);
+}
+
+/* --- МОДАЛЬНОЕ ОКНО КОРЗИНЫ --- */
 .cart-modal {
   background: rgba(30, 41, 59, 0.85);
   backdrop-filter: blur(20px);
@@ -204,6 +338,13 @@ body {
   flex-direction: column;
   box-shadow: 0 -10px 25px -5px rgba(0, 0, 0, 0.5);
   box-sizing: border-box;
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Анимация появления для обеих модалок */
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
 }
 
 .cart-modal-header {
@@ -226,6 +367,7 @@ body {
   cursor: pointer;
   padding: 4px;
   transition: color 0.2s;
+  margin-bottom: 4px;
 }
 
 .close-modal-btn:hover {
@@ -260,11 +402,23 @@ body {
   border-bottom: none;
 }
 
-.cart-item-emoji {
-  font-size: 28px;
+/* --- ОБНОВЛЕНО: Вместо эмодзи теперь блок для маленькой картинки в корзине --- */
+.cart-item-img {
+  width: 48px;
+  height: 48px;
   background: rgba(255, 255, 255, 0.03);
-  padding: 6px;
   border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--border-glow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cart-item-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .cart-item-info {

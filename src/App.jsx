@@ -1,37 +1,36 @@
 import React, { useState, useEffect } from 'react';
 import { mainButton, miniApp } from '@telegram-apps/sdk-react';
-import { ShoppingBag, Tag, X, Plus, Minus } from 'lucide-react';
+import { ShoppingBag, Tag, X, Plus, Minus, Info } from 'lucide-react';
 import './App.css';
 
-// База данных товаров магазина одежды
+// Обновленная база данных с путями к картинкам и описанием
 const CLOTHES_DATA = [
-  { id: 1, name: 'Oversize Худи "Glass"', price: 4990, image: '🧥' },
-  { id: 2, name: 'Футболка Dark Mode', price: 1990, image: '👕' },
-  { id: 3, name: 'Джоггеры FastAPI Async', price: 3990, image: '👖' },
-  { id: 4, name: 'Кепка Python Developer', price: 1490, image: '🧢' },
-  { id: 5, name: 'Кроссовки "Telegram Runner"', price: 5990, image: '👟' },
-  { id: 6, name: 'Рюкзак "Data Science"', price: 2990, image: '🎒' },
-  { id: 7, name: 'Куртка "AI Shield"', price: 6990, image: '🧥' },
+  { id: 1, name: 'Oversize Худи "Glass"', price: 4990, image: '/images/hoodie.jpg', description: 'Стильный oversize худи с эффектом Glassmorphic. Плотный хлопок, идеальная посадка.' },
+  { id: 2, name: 'Футболка Dark Mode', price: 1990, image: '/images/tshirt.jpg', description: 'Минималистичная футболка для настоящих ночных кодеров. 100% супрем-хлопок.' },
+  { id: 3, name: 'Джоггеры FastAPI Async', price: 3990, image: '/images/joggers.jpeg', description: 'Удобные джоггеры для асинхронного разгона. Не сковывают движения.' },
+  { id: 4, name: 'Кепка Python Developer', price: 1490, image: '/images/cap.webp', description: 'Защитит твою голову от перегрева при написании сложных скриптов.' },
+  { id: 5, name: 'Кроссовки "Telegram Runner"', price: 5990, image: '/images/sneakers.jpg', description: 'Лёгкие кроссовки с поддержкой стопы для быстрого деплоя.' },
+  { id: 6, name: 'Рюкзак "Data Science"', price: 2990, image: '/images/backpack.jpg', description: 'Вместителен как DataFrame. Спецотсек для твоего MacBook.' },
+  { id: 7, name: 'Куртка "AI Shield"', price: 6990, image: '/images/jacket.jpg', description: 'Ветрозащитная куртка с водоотталкивающим слоем. Твой щит от непогоды.' },
 ];
 
 function App() {
   const [cart, setCart] = useState([]);
-  const [isCartOpen, setIsCartOpen] = useState(false); // Состояние видимости корзины
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null); // Для просмотра подробностей товара
 
-  // 1. Инициализация и монтирование компонентов Telegram
+  // 1. Инициализация Telegram SDK
   useEffect(() => {
     try {
       if (!miniApp.isMounted()) miniApp.mount();
       if (!mainButton.isMounted()) mainButton.mount();
-
-      miniApp.expand(); // Раскрываем на весь экран
+      miniApp.expand();
     } catch (e) {
       console.log('Запущено вне Telegram или ошибка монтирования SDK');
     }
   }, []);
 
-  // 2. Обработка клика по Главной Кнопке Telegram (MainButton)
-  // В массив зависимостей нужно передать cart, чтобы функция видела актуальный стейт при клике
+  // 2. Клик по Главной Кнопке Telegram
   useEffect(() => {
     const handleMainButtonClick = () => {
       handleCheckout();
@@ -45,12 +44,11 @@ function App() {
     } catch (e) {}
   }, [cart]);
 
-  // 3. Синхронизация состояния корзины с внешним видом MainButton
+  // 3. Синхронизация состояния корзины с MainButton
   useEffect(() => {
     try {
       if (cart.length > 0) {
         const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-        
         mainButton.setParams({
           text: `Оформить заказ: ${total} ₽`,
           isVisible: true,
@@ -60,15 +58,13 @@ function App() {
         });
       } else {
         mainButton.hide();
-        setIsCartOpen(false); // Закрываем корзину, если она опустела
+        setIsCartOpen(false);
       }
     } catch (e) {}
   }, [cart]);
 
-  // Общее количество товаров в корзине для бейджика
   const totalItemsCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
-  // Добавление товара (или увеличение количества)
   const addToCart = (product) => {
     const existingItem = cart.find(item => item.id === product.id);
     if (existingItem) {
@@ -80,9 +76,9 @@ function App() {
     }
   };
 
-  // Удаление товара (уменьшение количества или полное удаление)
   const removeFromCart = (productId) => {
     const existingItem = cart.find(item => item.id === productId);
+    if (!existingItem) return;
     if (existingItem.quantity === 1) {
       setCart(cart.filter(item => item.id !== productId));
     } else {
@@ -92,30 +88,24 @@ function App() {
     }
   };
 
-  const clearCart = () => {
-    setCart([]);
-  };
+  const clearCart = () => setCart([]);
 
-  // 4. Отправка заказа на твой Python бэкенд
   const handleCheckout = async () => {
     const totalAmount = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-
     if (cart.length === 0) return;
 
     try {
       const response = await fetch('https://tg-shopski.onrender.com/api/orders', {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json' 
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          items: cart, // Теперь улетает красивый массив объектов с полем quantity
+          items: cart, 
           total: totalAmount 
         })
       });
       
       if (response.ok) {
-        setCart([]); // Очищаем корзину после успешной покупки
+        setCart([]);
         alert('Заказ успешно отправлен!');
       } else {
         alert('Сервер вернул ошибку: ' + response.status);
@@ -129,7 +119,6 @@ function App() {
     <div className="shop-container">
       <header className="shop-header">
         <h1>⚡ ZolikStore</h1>
-        {/* Клик по бейджику теперь открывает/закрывает корзину */}
         <div 
           className={`cart-badge ${cart.length > 0 ? 'active' : ''}`} 
           onClick={() => cart.length > 0 && setIsCartOpen(!isCartOpen)}
@@ -143,19 +132,22 @@ function App() {
         <Tag size={16} /> <span>Егорка_комутатор лучший репер</span>
       </div>
 
+      {/* Сетка товаров */}
       <main className="products-grid">
         {CLOTHES_DATA.map((product) => {
-          // Ищем, добавлен ли уже этот товар в корзину
           const cartItem = cart.find(item => item.id === product.id);
           
           return (
             <div key={product.id} className="product-card">
-              <div className="product-thumb">{product.image}</div>
-              <h3 className="product-title">{product.name}</h3>
+              {/* Клик по картинке открывает подробности */}
+              <div className="product-thumb" onClick={() => setSelectedProduct(product)}>
+                <img src={product.image} alt={product.name} onError={(e) => { e.target.src = 'https://placehold.co/150x150?text=No+Image' }} />
+                <div className="info-overlay"><Info size={16} /></div>
+              </div>
+              <h3 className="product-title" onClick={() => setSelectedProduct(product)}>{product.name}</h3>
               <div className="product-footer">
                 <span className="product-price">{product.price} ₽</span>
                 
-                {/* Если товар уже в корзине, показываем кнопки +/- прямо в карточке */}
                 {cartItem ? (
                   <div className="quantity-controls">
                     <button onClick={() => removeFromCart(product.id)}><Minus size={14} /></button>
@@ -173,10 +165,54 @@ function App() {
         })}
       </main>
 
-      {/* Выезжающее / всплывающее окно корзины */}
+      {/* МАРШРУТ/ОКНО: Подробности товара */}
+      {selectedProduct && (() => {
+      // Проверяем, добавлен ли этот товар в корзину, чтобы показать кнопки +/-
+      const modalCartItem = cart.find(item => item.id === selectedProduct.id);
+
+      return (
+        <div className="modal-overlay" onClick={() => setSelectedProduct(null)}>
+          <div className="product-details-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="close-modal-btn" onClick={() => setSelectedProduct(null)}>
+              <X size={24} />
+            </button>
+            <div className="modal-image-container">
+              <img 
+                src={selectedProduct.image} 
+                alt={selectedProduct.name} 
+                onError={(e) => { e.target.src = 'https://placehold.co/300x300?text=No+Image' }} 
+              />
+            </div>
+            <div className="modal-info">
+              <h2>{selectedProduct.name}</h2>
+              <p className="modal-description">{selectedProduct.description}</p>
+              <div className="modal-footer">
+                <span className="modal-price">{selectedProduct.price} ₽</span>
+                
+                {modalCartItem ? (
+                  /* Если товар уже в корзине, показываем красивое управление количеством */
+                  <div className="quantity-controls" style={{ padding: '8px 16px' }}>
+                    <button onClick={() => removeFromCart(selectedProduct.id)}><Minus size={18} /></button>
+                    <span style={{ fontSize: '16px', minWidth: '24px' }}>{modalCartItem.quantity}</span>
+                    <button onClick={() => addToCart(selectedProduct)}><Plus size={18} /></button>
+                  </div>
+                ) : (
+                  /* Если товара нет в корзине, показываем обычную кнопку добавления */
+                  <button className="modal-add-btn" onClick={() => addToCart(selectedProduct)}>
+                    Добавить в корзину
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    })()}
+
+      {/* Окно корзины */}
       {isCartOpen && cart.length > 0 && (
-        <div className="cart-modal-overlay">
-          <div className="cart-modal">
+        <div className="cart-modal-overlay" onClick={() => setIsCartOpen(false)}>
+          <div className="cart-modal" onClick={(e) => e.stopPropagation()}>
             <div className="cart-modal-header">
               <h2>Корзина</h2>
               <button className="close-modal-btn" onClick={() => setIsCartOpen(false)}>
@@ -187,7 +223,9 @@ function App() {
             <div className="cart-items-list">
               {cart.map((item) => (
                 <div key={item.id} className="cart-item">
-                  <span className="cart-item-emoji">{item.image}</span>
+                  <div className="cart-item-img">
+                    <img src={item.image} alt={item.name} onError={(e) => { e.target.src = 'https://placehold.co/50x50?text=Err' }} />
+                  </div>
                   <div className="cart-item-info">
                     <h4>{item.name}</h4>
                     <p>{item.price * item.quantity} ₽</p>
