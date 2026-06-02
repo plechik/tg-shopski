@@ -2,6 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { mainButton, miniApp } from '@telegram-apps/sdk-react';
 import { ShoppingBag, Tag, X, Plus, Minus, Info } from 'lucide-react';
 import './App.css';
+import { Carousel, HStack, IconButton } from "@chakra-ui/react"
+import { Box } from "@chakra-ui/react"
+import {
+  LuChevronLeft,
+  LuChevronRight,
+  LuMouse,
+  LuMoveHorizontal,
+} from "react-icons/lu"
 
 // Обновленная база данных с путями к картинкам и описанием
 const CLOTHES_DATA = [
@@ -118,7 +126,7 @@ function App() {
   return (
     <div className="shop-container">
       <header className="shop-header">
-        <h1>⚡ ZolikStore</h1>
+        <h1>ZolikStore</h1>
         <div 
           className={`cart-badge ${cart.length > 0 ? 'active' : ''}`} 
           onClick={() => cart.length > 0 && setIsCartOpen(!isCartOpen)}
@@ -128,10 +136,48 @@ function App() {
         </div>
       </header>
 
-      <div className="promo-banner">
-        <Tag size={16} /> <span>Егорка_комутатор лучший репер</span>
-      </div>
+      <div className="carousel">
+        <Carousel.Root slideCount={CLOTHES_DATA.length} maxW="xl" mx="auto" allowMouseDrag>
+          <Carousel.ItemGroup>
+            {CLOTHES_DATA.map((product, index) => (
+              <Carousel.Item key={product.id} index={index}>
+                <Box w="100%" h="300px" rounded="lg" overflow="hidden" position="relative">
+                  <img 
+                    src={product.image} 
+                    alt={product.name} 
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                    }}
+                    onError={(e) => { e.target.src = 'https://placehold.co/600x300?text=No+Image' }} 
+                  />
+                  <div class='carousel-product-name'>
+                    {product.name}
+                  </div>
+                </Box>
+              </Carousel.Item>
+            ))}
+          </Carousel.ItemGroup>
 
+          <Carousel.Control justifyContent="center" gap="4">
+            <Carousel.PrevTrigger asChild>
+              <IconButton size="xs" variant="ghost" colorPalette="gray">
+                <LuChevronLeft />
+              </IconButton>
+            </Carousel.PrevTrigger>
+
+            <Carousel.Indicators />
+
+            <Carousel.NextTrigger asChild>
+              <IconButton size="xs" variant="ghost" colorPalette="gray">
+                <LuChevronRight />
+              </IconButton>
+            </Carousel.NextTrigger>
+          </Carousel.Control>
+        </Carousel.Root>
+      </div>
+      
       {/* Сетка товаров */}
       <main className="products-grid">
         {CLOTHES_DATA.map((product) => {
