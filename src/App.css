@@ -73,7 +73,6 @@ body {
   color: #93c5fd;
 }
 
-
 .carousel-product-name {
   position: absolute;
   bottom: 0;
@@ -469,4 +468,55 @@ body {
 .clear-cart-btn-modal:hover {
   background: rgba(239, 68, 68, 0.2);
   border-color: rgba(239, 68, 68, 0.4);
+}
+
+.admin-open-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  padding: 8px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.admin-open-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Форма в модалке */
+.admin-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.admin-form input, .admin-form textarea {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 10px 14px;
+  color: #fff;
+  font-size: 14px;
+  outline: none;
+}
+
+.admin-form textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+.admin-form input:focus, .admin-form textarea:focus {
+  border-color: #3b82f6;
+}
+
+.loading-spinner {
+  text-align: center;
+  color: #94a3b8;
+  margin-top: 40px;
+  font-size: 16px;
 }

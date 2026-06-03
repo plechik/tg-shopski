@@ -1,42 +1,73 @@
 import React, { useState, useEffect } from 'react';
 import { mainButton, miniApp } from '@telegram-apps/sdk-react';
-import { ShoppingBag, Tag, X, Plus, Minus, Info } from 'lucide-react';
+import { ShoppingBag, Tag, X, Plus, Minus, Info, PackagePlus } from 'lucide-react';
 import './App.css';
-import { Carousel, HStack, IconButton } from "@chakra-ui/react"
-import { Box } from "@chakra-ui/react"
-import {
-  LuChevronLeft,
-  LuChevronRight,
-  LuMouse,
-  LuMoveHorizontal,
-} from "react-icons/lu"
+import { Carousel, HStack, IconButton, Box } from "@chakra-ui/react";
+import { LuChevronLeft, LuChevronRight } from "react-icons/lu";
 
-// Обновленная база данных с путями к картинкам и описанием
-const CLOTHES_DATA = [
-  { id: 1, name: 'Oversize Худи "Glass"', price: 4990, image: '/images/hoodie.jpg', description: 'Стильный oversize худи с эффектом Glassmorphic. Плотный хлопок, идеальная посадка.' },
-  { id: 2, name: 'Футболка Dark Mode', price: 1990, image: '/images/tshirt.jpg', description: 'Минималистичная футболка для настоящих ночных кодеров. 100% супрем-хлопок.' },
-  { id: 3, name: 'Джоггеры FastAPI Async', price: 3990, image: '/images/joggers.jpeg', description: 'Удобные джоггеры для асинхронного разгона. Не сковывают движения.' },
-  { id: 4, name: 'Кепка Python Developer', price: 1490, image: '/images/cap.webp', description: 'Защитит твою голову от перегрева при написании сложных скриптов.' },
-  { id: 5, name: 'Кроссовки "Telegram Runner"', price: 5990, image: '/images/sneakers.jpg', description: 'Лёгкие кроссовки с поддержкой стопы для быстрого деплоя.' },
-  { id: 6, name: 'Рюкзак "Data Science"', price: 2990, image: '/images/backpack.jpg', description: 'Вместителен как DataFrame. Спецотсек для твоего MacBook.' },
-  { id: 7, name: 'Куртка "AI Shield"', price: 6990, image: '/images/jacket.jpg', description: 'Ветрозащитная куртка с водоотталкивающим слоем. Твой щит от непогоды.' },
-];
+// БАЗОВЫЙ URL ТВОЕГО БЭКЕНДА НА RENDER
+const API_BASE_URL = 'https://zolikstore.loca.lt';
+const ADMIN_TELEGRAM_ID = 1160765121;
 
 function App() {
+  const [products, setProducts] = useState([]); // Товары теперь загружаются сюда
+  const [isLoading, setIsLoading] = useState(true);
   const [cart, setCart] = useState([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState(null); // Для просмотра подробностей товара
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  
+  // Состояния для админки
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
+  const [newProduct, setNewProduct] = useState({ name: '', brand: '', price: '', description: '', image_file: null });
 
-  // 1. Инициализация Telegram SDK
+  // 1. Инициализация Telegram SDK, проверка прав админа и загрузка каталога
   useEffect(() => {
     try {
       if (!miniApp.isMounted()) miniApp.mount();
       if (!mainButton.isMounted()) mainButton.mount();
       miniApp.expand();
+
+      // Проверяем, кто открыл приложение
+      const tgData = window.Telegram?.WebApp?.initDataUnsafe;
+      if (tgData?.user?.id === ADMIN_TELEGRAM_ID) {
+        setIsAdmin(true);
+      }
     } catch (e) {
-      console.log('Запущено вне Telegram или ошибка монтирования SDK');
+      console.log('Запущено вне Telegram или ошибка SDK');
+      // Для тестов на ПК можно временно включить: setIsAdmin(true);
     }
+
+    fetchCatalog();
   }, []);
+
+  // Функция загрузки товаров из PostgreSQL
+  const fetchCatalog = async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch(`${API_BASE_URL}/api/products`);
+      if (response.ok) {
+        const data = await response.json();
+        
+        // Мапим данные из Postgres (массив images) под старую структуру карточки
+        const formattedProducts = data.map(p => ({
+          id: p.id,
+          name: p.name,
+          brand: p.brand,
+          price: Number(p.price),
+          description: p.description,
+          // Если у товара есть картинки в БД, берем первую (is_main), иначе заглушка
+          image: p.images && p.images.length > 0 ? p.images[0].image_url : 'https://placehold.co/300x300?text=No+Image'
+        }));
+        
+        setProducts(formattedProducts);
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки каталога:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // 2. Клик по Главной Кнопке Telegram
   useEffect(() => {
@@ -103,7 +134,7 @@ function App() {
     if (cart.length === 0) return;
 
     try {
-      const response = await fetch('https://tg-shopski.onrender.com/api/orders', {
+      const response = await fetch(`${API_BASE_URL}/api/orders`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -123,139 +154,174 @@ function App() {
     }
   };
 
+  // Функция добавления нового товара администратором
+  const handleAddProductSubmit = async (e) => {
+      e.preventDefault();
+      if (!newProduct.name || !newProduct.price || !newProduct.brand) return;
+
+      try {
+        // Создаем объект FormData вместо отправки JSON
+        const formData = new FormData();
+        formData.append('name', newProduct.name);
+        formData.append('brand', newProduct.brand);
+        formData.append('price', newProduct.price);
+        formData.append('description', newProduct.description);
+
+        // Если файл выбран, прикрепляем его к форме
+        if (newProduct.image_file) {
+          formData.append('image_file', newProduct.image_file);
+        }
+
+        const response = await fetch(`${API_BASE_URL}/api/products`, {
+          method: 'POST',
+          // Внимание: заголовок Content-Type указывать НЕ НАДО! Браузер выставит multipart/form-data автоматически
+          body: formData
+        });
+
+        if (response.ok) {
+          alert('Товар успешно создан и картинка загружена в Backblaze!');
+          setIsAdminModalOpen(false);
+          setNewProduct({ name: '', brand: '', price: '', description: '', image_file: null });
+          fetchCatalog(); // Обновляем витрину
+        } else {
+          alert('Ошибка при создании товара на бэкенде');
+        }
+      } catch (error) {
+        alert('Ошибка соединения с сервером: ' + error.message);
+      }
+    };
+
   return (
     <div className="shop-container">
       <header className="shop-header">
         <h1>ZolikStore</h1>
-        <div 
-          className={`cart-badge ${cart.length > 0 ? 'active' : ''}`} 
-          onClick={() => cart.length > 0 && setIsCartOpen(!isCartOpen)}
-        >
-          <ShoppingBag size={20} />
-          <span>{totalItemsCount}</span>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          {/* Если зашел админ — показываем кнопку управления товарами */}
+          {isAdmin && (
+            <button className="admin-open-btn" onClick={() => setIsAdminModalOpen(true)}>
+              <PackagePlus size={20} />
+            </button>
+          )}
+          <div 
+            className={`cart-badge ${cart.length > 0 ? 'active' : ''}`} 
+            onClick={() => cart.length > 0 && setIsCartOpen(!isCartOpen)}
+          >
+            <ShoppingBag size={20} />
+            <span>{totalItemsCount}</span>
+          </div>
         </div>
       </header>
 
-      <div className="carousel">
-        <Carousel.Root slideCount={CLOTHES_DATA.length} maxW="xl" mx="auto" allowMouseDrag>
-          <Carousel.ItemGroup>
-            {CLOTHES_DATA.map((product, index) => (
-              <Carousel.Item key={product.id} index={index}>
-                <Box w="100%" h="300px" rounded="lg" overflow="hidden" position="relative">
-                  <img 
-                    src={product.image} 
-                    alt={product.name} 
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'cover',
-                    }}
-                    onError={(e) => { e.target.src = 'https://placehold.co/600x300?text=No+Image' }} 
-                  />
-                  <div class='carousel-product-name'>
-                    {product.name}
-                  </div>
-                </Box>
-              </Carousel.Item>
-            ))}
-          </Carousel.ItemGroup>
-
-          <Carousel.Control justifyContent="center" gap="4">
-            <Carousel.PrevTrigger asChild>
-              <IconButton size="xs" variant="ghost" colorPalette="gray">
-                <LuChevronLeft />
-              </IconButton>
-            </Carousel.PrevTrigger>
-
-            <Carousel.Indicators />
-
-            <Carousel.NextTrigger asChild>
-              <IconButton size="xs" variant="ghost" colorPalette="gray">
-                <LuChevronRight />
-              </IconButton>
-            </Carousel.NextTrigger>
-          </Carousel.Control>
-        </Carousel.Root>
-      </div>
-      
-      {/* Сетка товаров */}
-      <main className="products-grid">
-        {CLOTHES_DATA.map((product) => {
-          const cartItem = cart.find(item => item.id === product.id);
+      {isLoading ? (
+        <div className="loading-spinner">Загрузка каталога обуви...</div>
+      ) : (
+        <>
+          {/* Слайдер (Carousel) верхних товаров */}
+          {products.length > 0 && (
+            <div className="carousel">
+              <Carousel.Root slideCount={products.length} maxW="xl" mx="auto" allowMouseDrag>
+                <Carousel.ItemGroup>
+                  {products.map((product, index) => (
+                    <Carousel.Item key={product.id} index={index}>
+                      <Box w="100%" h="300px" rounded="lg" overflow="hidden" position="relative">
+                        <img 
+                          src={product.image} 
+                          alt={product.name} 
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          onError={(e) => { e.target.src = 'https://placehold.co/600x300?text=No+Image' }} 
+                        />
+                        <div className='carousel-product-name'>{product.name}</div>
+                      </Box>
+                    </Carousel.Item>
+                  ))}
+                </Carousel.ItemGroup>
+                <Carousel.Control justifyContent="center" gap="4">
+                  <Carousel.PrevTrigger asChild>
+                    <IconButton size="xs" variant="ghost" colorPalette="gray">
+                      <LuChevronLeft />
+                    </IconButton>
+                  </Carousel.PrevTrigger>
+                  <Carousel.Indicators />
+                  <Carousel.NextTrigger asChild>
+                    <IconButton size="xs" variant="ghost" colorPalette="gray">
+                      <LuChevronRight />
+                    </IconButton>
+                  </Carousel.NextTrigger>
+                </Carousel.Control>
+              </Carousel.Root>
+            </div>
+          )}
           
-          return (
-            <div key={product.id} className="product-card">
-              {/* Клик по картинке открывает подробности */}
-              <div className="product-thumb" onClick={() => setSelectedProduct(product)}>
-                <img src={product.image} alt={product.name} onError={(e) => { e.target.src = 'https://placehold.co/150x150?text=No+Image' }} />
-                <div className="info-overlay"><Info size={16} /></div>
-              </div>
-              <h3 className="product-title" onClick={() => setSelectedProduct(product)}>{product.name}</h3>
-              <div className="product-footer">
-                <span className="product-price">{product.price} ₽</span>
-                
-                {cartItem ? (
-                  <div className="quantity-controls">
-                    <button onClick={() => removeFromCart(product.id)}><Minus size={14} /></button>
-                    <span>{cartItem.quantity}</span>
-                    <button onClick={() => addToCart(product)}><Plus size={14} /></button>
+          {/* Сетка товаров из PostgreSQL */}
+          <main className="products-grid">
+            {products.map((product) => {
+              const cartItem = cart.find(item => item.id === product.id);
+              
+              return (
+                <div key={product.id} className="product-card">
+                  <div className="product-thumb" onClick={() => setSelectedProduct(product)}>
+                    <img src={product.image} alt={product.name} onError={(e) => { e.target.src = 'https://placehold.co/150x150?text=No+Image' }} />
+                    <div className="info-overlay"><Info size={16} /></div>
                   </div>
-                ) : (
-                  <button className="add-btn" onClick={() => addToCart(product)}>
-                    + Добавить
-                  </button>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </main>
+                  <h3 className="product-title" onClick={() => setSelectedProduct(product)}>{product.name}</h3>
+                  <div className="product-footer">
+                    <span className="product-price">{product.price} ₽</span>
+                    
+                    {cartItem ? (
+                      <div className="quantity-controls">
+                        <button onClick={() => removeFromCart(product.id)}><Minus size={14} /></button>
+                        <span>{cartItem.quantity}</span>
+                        <button onClick={() => addToCart(product)}><Plus size={14} /></button>
+                      </div>
+                    ) : (
+                      <button className="add-btn" onClick={() => addToCart(product)}>
+                        + Добавить
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </main>
+        </>
+      )}
 
-      {/* МАРШРУТ/ОКНО: Подробности товара */}
+      {/* ОКНО: Подробности товара */}
       {selectedProduct && (() => {
-      // Проверяем, добавлен ли этот товар в корзину, чтобы показать кнопки +/-
-      const modalCartItem = cart.find(item => item.id === selectedProduct.id);
-
-      return (
-        <div className="modal-overlay" onClick={() => setSelectedProduct(null)}>
-          <div className="product-details-modal" onClick={(e) => e.stopPropagation()}>
-            <button className="close-modal-btn" onClick={() => setSelectedProduct(null)}>
-              <X size={24} />
-            </button>
-            <div className="modal-image-container">
-              <img 
-                src={selectedProduct.image} 
-                alt={selectedProduct.name} 
-                onError={(e) => { e.target.src = 'https://placehold.co/300x300?text=No+Image' }} 
-              />
-            </div>
-            <div className="modal-info">
-              <h2>{selectedProduct.name}</h2>
-              <p className="modal-description">{selectedProduct.description}</p>
-              <div className="modal-footer">
-                <span className="modal-price">{selectedProduct.price} ₽</span>
-                
-                {modalCartItem ? (
-                  /* Если товар уже в корзине, показываем красивое управление количеством */
-                  <div className="quantity-controls" style={{ padding: '8px 16px' }}>
-                    <button onClick={() => removeFromCart(selectedProduct.id)}><Minus size={18} /></button>
-                    <span style={{ fontSize: '16px', minWidth: '24px' }}>{modalCartItem.quantity}</span>
-                    <button onClick={() => addToCart(selectedProduct)}><Plus size={18} /></button>
-                  </div>
-                ) : (
-                  /* Если товара нет в корзине, показываем обычную кнопку добавления */
-                  <button className="modal-add-btn" onClick={() => addToCart(selectedProduct)}>
-                    Добавить в корзину
-                  </button>
-                )}
+        const modalCartItem = cart.find(item => item.id === selectedProduct.id);
+        return (
+          <div className="modal-overlay" onClick={() => setSelectedProduct(null)}>
+            <div className="product-details-modal" onClick={(e) => e.stopPropagation()}>
+              <button className="close-modal-btn" onClick={() => setSelectedProduct(null)}>
+                <X size={24} />
+              </button>
+              <div className="modal-image-container">
+                <img src={selectedProduct.image} alt={selectedProduct.name} onError={(e) => { e.target.src = 'https://placehold.co/300x300?text=No+Image' }} />
+              </div>
+              <div className="modal-info">
+                <h2>{selectedProduct.name}</h2>
+                <p className="modal-description">{selectedProduct.description}</p>
+                <div className="modal-footer">
+                  <span className="modal-price">{selectedProduct.price} ₽</span>
+                  {modalCartItem ? (
+                    <div className="quantity-controls" style={{ padding: '8px 16px' }}>
+                      <button onClick={() => removeFromCart(selectedProduct.id)}><Minus size={18} /></button>
+                      <span style={{ fontSize: '16px', minWidth: '24px' }}>{modalCartItem.quantity}</span>
+                      <button onClick={() => addToCart(selectedProduct)}><Plus size={18} /></button>
+                    </div>
+                  ) : (
+                    <button className="modal-add-btn" onClick={() => addToCart(selectedProduct)}>
+                      Добавить в корзину
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      );
-    })()}
+        );
+      })()}
 
-      {/* Окно корзины */}
+      {/* ОКНО КОРЗИНЫ */}
       {isCartOpen && cart.length > 0 && (
         <div className="cart-modal-overlay" onClick={() => setIsCartOpen(false)}>
           <div className="cart-modal" onClick={(e) => e.stopPropagation()}>
@@ -265,7 +331,6 @@ function App() {
                 <X size={24} />
               </button>
             </div>
-
             <div className="cart-items-list">
               {cart.map((item) => (
                 <div key={item.id} className="cart-item">
@@ -284,10 +349,62 @@ function App() {
                 </div>
               ))}
             </div>
-
             <button className="clear-cart-btn-modal" onClick={clearCart}>
               Очистить всё
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* МАРШРУТ/МОДАЛКА АДМИНИСТРАТОРА: Добавление нового товара */}
+      {isAdminModalOpen && (
+        <div className="modal-overlay" onClick={() => setIsAdminModalOpen(false)}>
+          <div className="product-details-modal admin-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="cart-modal-header">
+              <h2>Добавить товар в базу</h2>
+              <button className="close-modal-btn" onClick={() => setIsAdminModalOpen(false)}>
+                <X size={24} />
+              </button>
+            </div>
+            <form onSubmit={handleAddProductSubmit} className="admin-form">
+              <input 
+                type="text" 
+                placeholder="Название (например: Кроссовки Zolik Air)" 
+                value={newProduct.name} 
+                onChange={e => setNewProduct({...newProduct, name: e.target.value})} 
+                required 
+              />
+              <input 
+                type="text" 
+                placeholder="Бренд (например: Nike)" 
+                value={newProduct.brand} 
+                onChange={e => setNewProduct({...newProduct, brand: e.target.value})} 
+                required 
+              />
+              <input 
+                type="number" 
+                placeholder="Цена в рублях" 
+                value={newProduct.price} 
+                onChange={e => setNewProduct({...newProduct, price: e.target.value})} 
+                required 
+              />
+              <textarea 
+                placeholder="Описание товара" 
+                value={newProduct.description} 
+                onChange={e => setNewProduct({...newProduct, description: e.target.value})} 
+              />
+              <label style={{ color: '#aaa', fontSize: '12px', marginBottom: '-6px', paddingLeft: '4px' }}>
+                Фотография товара:
+              </label>
+              <input 
+                type="file" 
+                accept="image/*"
+                onChange={e => setNewProduct({...newProduct, image_file: e.target.files[0]})} 
+              />
+              <button type="submit" className="modal-add-btn" style={{ marginTop: '12px', width: '100%' }}>
+                Сохранить в PostgreSQL
+              </button>
+            </form>
           </div>
         </div>
       )}
