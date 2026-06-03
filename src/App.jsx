@@ -6,7 +6,7 @@ import { Carousel, HStack, IconButton, Box } from "@chakra-ui/react";
 import { LuChevronLeft, LuChevronRight } from "react-icons/lu";
 
 // БАЗОВЫЙ URL ТВОЕГО БЭКЕНДА НА RENDER
-const API_BASE_URL = 'https://tg-shopski.onrender.com';
+const API_BASE_URL = 'https://zolikstore.loca.lt';
 const ADMIN_TELEGRAM_ID = 1160765121;
 
 function App() {
@@ -23,36 +23,41 @@ function App() {
 
   // 1. Инициализация Telegram SDK, проверка прав админа и загрузка каталога
   useEffect(() => {
-    try {
-      if (!miniApp.isMounted()) miniApp.mount();
-      if (!mainButton.isMounted()) mainButton.mount();
-      miniApp.expand();
+  try {
+    // Монтируем базовые компоненты
+    if (!miniApp.isMounted()) miniApp.mount();
+    if (!mainButton.isMounted()) mainButton.mount();
+    miniApp.expand();
 
-      // 1. Пробуем получить данные через современный SDK
-      let userId = null;
-      if (initData.isMounted() || initData.mount()) {
-        userId = initData.user()?.id;
-      }
+    let userId = null;
 
-      // 2. Если SDK ещё не подтянул, пробуем через старый window.Telegram
-      if (!userId) {
-        userId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
-      }
-
-      console.log("Текущий ID пользователя в Telegram:", userId);
-
-      // Приводим оба ID к String, чтобы избежать проблем с типами (String vs Number)
-      if (userId && String(userId) === String(ADMIN_TELEGRAM_ID)) {
-        setIsAdmin(true);
-      }
-    } catch (e) {
-      console.log('Запущено вне Telegram или ошибка SDK', e);
-      // Для тестов на ПК (локально) раскомментируй строку ниже:
-      // setIsAdmin(true);
+    // Способ 1: Пытаемся достать через глобальный объект Telegram WebApp (самый надежный способ для Mini Apps)
+    if (window.Telegram?.WebApp?.initDataUnsafe?.user?.id) {
+      userId = window.Telegram.WebApp.initDataUnsafe.user.id;
+    } 
+    // Способ 2: Запасной вариант через SDK, если объект initData импортирован или доступен
+    else {
+      import('@telegram-apps/sdk-react').then((sdk) => {
+        if (sdk.initData && sdk.initData.isMounted()) {
+          userId = sdk.initData.user()?.id;
+        }
+      }).catch(err => console.log("Ошибка динамического импорта SDK:", err));
     }
 
-    fetchCatalog();
-  }, []);
+    console.log("Текущий ID пользователя в Telegram:", userId);
+
+    // Приводим оба ID к String, чтобы избежать проблем с типами
+    if (userId && String(userId) === String(ADMIN_TELEGRAM_ID)) {
+      setIsAdmin(true);
+    }
+  } catch (e) {
+    console.error('Запущено вне Telegram или ошибка SDK:', e);
+    // Для тестов на ПК (локально) можешь раскомментировать:
+    // setIsAdmin(true);
+  }
+
+  fetchCatalog();
+}, []);
 
   // Функция загрузки товаров из PostgreSQL
   const fetchCatalog = async () => {
