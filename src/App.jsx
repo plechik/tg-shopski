@@ -24,39 +24,23 @@ function App() {
   // 1. Инициализация Telegram SDK, проверка прав админа и загрузка каталога
   useEffect(() => {
   try {
-    // Монтируем базовые компоненты
     if (!miniApp.isMounted()) miniApp.mount();
     if (!mainButton.isMounted()) mainButton.mount();
     miniApp.expand();
 
-    let userId = null;
+    // Пытаемся достать Telegram ID
+    let userId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+    alert("Найден Telegram ID: " + userId); // <-- ВРЕМЕННЫЙ ТЕСТ: покажет, видит ли вообще SDK телеграм
 
-    // Способ 1: Пытаемся достать через глобальный объект Telegram WebApp (самый надежный способ для Mini Apps)
-    if (window.Telegram?.WebApp?.initDataUnsafe?.user?.id) {
-      userId = window.Telegram.WebApp.initDataUnsafe.user.id;
-    } 
-    // Способ 2: Запасной вариант через SDK, если объект initData импортирован или доступен
-    else {
-      import('@telegram-apps/sdk-react').then((sdk) => {
-        if (sdk.initData && sdk.initData.isMounted()) {
-          userId = sdk.initData.user()?.id;
-        }
-      }).catch(err => console.log("Ошибка динамического импорта SDK:", err));
-    }
-
-    console.log("Текущий ID пользователя в Telegram:", userId);
-
-    // Приводим оба ID к String, чтобы избежать проблем с типами
     if (userId && String(userId) === String(ADMIN_TELEGRAM_ID)) {
       setIsAdmin(true);
     }
   } catch (e) {
-    console.error('Запущено вне Telegram или ошибка SDK:', e);
-    // Для тестов на ПК (локально) можешь раскомментировать:
-    // setIsAdmin(true);
+    alert('Критическая ошибка Telegram SDK: ' + e.message);
   }
 
-  fetchCatalog();
+  // Вызываем загрузку каталога
+  fetchCatalogWithDebug();
 }, []);
 
   // Функция загрузки товаров из PostgreSQL
