@@ -24,7 +24,6 @@ function App() {
   // 1. Инициализация Telegram SDK, проверка прав админа и загрузка каталога
   useEffect(() => {
     try {
-      // 1. Безопасно монтируем компоненты SDK, если они импортированы
       if (miniApp && typeof miniApp.mount === 'function' && !miniApp.isMounted()) {
         miniApp.mount();
       }
@@ -32,23 +31,31 @@ function App() {
         mainButton.mount();
       }
 
-      // 2. Раскрываем приложение на максимум через нативный Telegram WebApp API
       if (window.Telegram?.WebApp) {
         window.Telegram.WebApp.ready();
-        window.Telegram.WebApp.expand(); // <-- Это сработает БЕЗ ошибок на любом устройстве
+        window.Telegram.WebApp.expand();
       }
 
-      // 3. Получаем ID пользователя для админки
-      let userId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
-      console.log("Найден Telegram ID:", userId);
+      // Извлекаем id пользователя
+      const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
+      
+      if (!tgUser) {
+        // Если tgUser пустой, значит Telegram не передал данные (запуск вне Mini App интерфейса)
+        alert("⚠️ Данные пользователя Telegram не найдены! Вы запустили приложение как обычный сайт, а не как Mini App.");
+      } else {
+        // Если данные есть, смотрим что внутри
+        alert(`Успешный запуск Mini App!\nВаш ID: ${tgUser.id} (Тип: ${typeof tgUser.id})\nОжидаемый ID админа: ${ADMIN_TELEGRAM_ID}`);
+      }
 
-      if (userId && String(userId) === String(ADMIN_TELEGRAM_ID)) {
+      // Надежное приведение к строке + удаление лишних пробелов
+      const currentUserId = tgUser?.id ? String(tgUser.id).trim() : null;
+      const targetAdminId = String(ADMIN_TELEGRAM_ID).trim();
+
+      if (currentUserId && currentUserId === targetAdminId) {
         setIsAdmin(true);
       }
     } catch (e) {
-      console.error('Ошибка инициализации SDK:', e);
-      // Оставляем алерт только для дебага, если нужно:
-      alert('Ошибка инициализации: ' + e.message);
+      alert('Ошибка в блоке инициализации: ' + e.message);
     }
 
     fetchCatalog();
