@@ -28,14 +28,27 @@ function App() {
       if (!mainButton.isMounted()) mainButton.mount();
       miniApp.expand();
 
-      // Проверяем, кто открыл приложение
-      const tgData = window.Telegram?.WebApp?.initDataUnsafe;
-      if (tgData?.user?.id === ADMIN_TELEGRAM_ID) {
+      // 1. Пробуем получить данные через современный SDK
+      let userId = null;
+      if (initData.isMounted() || initData.mount()) {
+        userId = initData.user()?.id;
+      }
+
+      // 2. Если SDK ещё не подтянул, пробуем через старый window.Telegram
+      if (!userId) {
+        userId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+      }
+
+      console.log("Текущий ID пользователя в Telegram:", userId);
+
+      // Приводим оба ID к String, чтобы избежать проблем с типами (String vs Number)
+      if (userId && String(userId) === String(ADMIN_TELEGRAM_ID)) {
         setIsAdmin(true);
       }
     } catch (e) {
-      console.log('Запущено вне Telegram или ошибка SDK');
-      // Для тестов на ПК можно временно включить: setIsAdmin(true);
+      console.log('Запущено вне Telegram или ошибка SDK', e);
+      // Для тестов на ПК (локально) раскомментируй строку ниже:
+      // setIsAdmin(true);
     }
 
     fetchCatalog();
@@ -56,7 +69,6 @@ function App() {
           brand: p.brand,
           price: Number(p.price),
           description: p.description,
-          // Если у товара есть картинки в БД, берем первую (is_main), иначе заглушка
           image: p.images && p.images.length > 0 ? p.images[0].image_url : 'https://placehold.co/300x300?text=No+Image'
         }));
         

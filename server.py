@@ -30,7 +30,7 @@ BOT_TOKEN = os.environ.get("BOT_TOKEN", "8944152643:AAGREuxaxUFMKVm6KkB9TZ6v4MBa
 MINI_APP_URL = "https://t.me/zolikstore_bot/app"
 PROXY_URL = 'http://127.0.0.1:12334'
 
-DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql+asyncpg://postgres:wasdqwe123@127.0.0.1:5432/zolikstore")
+DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://neondb_owner:npg_j1rPE0XQvefH@ep-frosty-cell-ag3xxwrc.c-2.eu-central-1.aws.neon.tech/neondb?sslmode=require")
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+asyncpg://", 1)
 # =================================================
