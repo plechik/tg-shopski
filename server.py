@@ -27,7 +27,7 @@ B2_BUCKET_NAME = os.environ.get("B2_BUCKET_NAME", "zolikstore")
 
 # ================= CONFIGURATION =================
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "8944152643:AAGREuxaxUFMKVm6KkB9TZ6v4MBaQjQcSjI")
-MINI_APP_URL = "https://t.me/zolikstore_bot/app"
+MINI_APP_URL = "https://tg-shopski.vercel.app"
 PROXY_URL = 'http://127.0.0.1:12334'
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql+asyncpg://postgres:wasdqwe123@localhost:5432/zolikstore")
@@ -233,19 +233,13 @@ async def create_order(order: Order):
 
 
 # --- ЛОГИКА ТЕЛЕГРАМ БОТА ---
-import time
-
 @dp.message(CommandStart())
 async def cmd_start(message: types.Message):
     builder = InlineKeyboardBuilder()
-    
-    # Добавляем ?v=ВРЕМЯ, чтобы Telegram думал, что ссылка изменилась, и сбрасывал кэш
-    unique_url = f"https://tg-shopski.vercel.app?v={int(time.time())}"
-    
     builder.row(
         types.InlineKeyboardButton(
             text="🛍️ Открыть магазин", 
-            web_app=types.WebAppInfo(url=unique_url)
+            web_app=types.WebAppInfo(url=MINI_APP_URL)
         )
     )
     

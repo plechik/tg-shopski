@@ -32,32 +32,21 @@ function App() {
       }
 
       if (window.Telegram?.WebApp) {
-        window.Telegram.WebApp.ready();
-        window.Telegram.WebApp.expand();
-      }
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
 
-      // Извлекаем id пользователя
-      const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
-      
-      if (!tgUser) {
-        // Если tgUser пустой, значит Telegram не передал данные (запуск вне Mini App интерфейса)
-        alert("⚠️ Данные пользователя Telegram не найдены! Вы запустили приложение как обычный сайт, а не как Mini App.");
-      } else {
-        // Если данные есть, смотрим что внутри
-        alert(`Успешный запуск Mini App!\nВаш ID: ${tgUser.id} (Тип: ${typeof tgUser.id})\nОжидаемый ID админа: ${ADMIN_TELEGRAM_ID}`);
+        // 3. Проверяем права администратора
+        const userId = tg.initDataUnsafe?.user?.id;
+        if (userId && String(userId).trim() === String(ADMIN_TELEGRAM_ID).trim()) {
+          setIsAdmin(true);
+        }
       }
-
-      // Надежное приведение к строке + удаление лишних пробелов
-      const currentUserId = tgUser?.id ? String(tgUser.id).trim() : null;
-      const targetAdminId = String(ADMIN_TELEGRAM_ID).trim();
-
-      if (currentUserId && currentUserId === targetAdminId) {
-        setIsAdmin(true);
-      }
-    } catch (e) {
-      alert('Ошибка в блоке инициализации: ' + e.message);
+    } catch (error) {
+      console.error('Ошибка инициализации Telegram Mini App:', error);
     }
 
+    // 4. Загружаем товары из базы данных
     fetchCatalog();
   }, []);
 
