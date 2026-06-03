@@ -23,25 +23,36 @@ function App() {
 
   // 1. Инициализация Telegram SDK, проверка прав админа и загрузка каталога
   useEffect(() => {
-  try {
-    if (!miniApp.isMounted()) miniApp.mount();
-    if (!mainButton.isMounted()) mainButton.mount();
-    miniApp.expand();
+    try {
+      // 1. Безопасно монтируем компоненты SDK, если они импортированы
+      if (miniApp && typeof miniApp.mount === 'function' && !miniApp.isMounted()) {
+        miniApp.mount();
+      }
+      if (mainButton && typeof mainButton.mount === 'function' && !mainButton.isMounted()) {
+        mainButton.mount();
+      }
 
-    // Пытаемся достать Telegram ID
-    let userId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
-    alert("Найден Telegram ID: " + userId); // <-- ВРЕМЕННЫЙ ТЕСТ: покажет, видит ли вообще SDK телеграм
+      // 2. Раскрываем приложение на максимум через нативный Telegram WebApp API
+      if (window.Telegram?.WebApp) {
+        window.Telegram.WebApp.ready();
+        window.Telegram.WebApp.expand(); // <-- Это сработает БЕЗ ошибок на любом устройстве
+      }
 
-    if (userId && String(userId) === String(ADMIN_TELEGRAM_ID)) {
-      setIsAdmin(true);
+      // 3. Получаем ID пользователя для админки
+      let userId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+      console.log("Найден Telegram ID:", userId);
+
+      if (userId && String(userId) === String(ADMIN_TELEGRAM_ID)) {
+        setIsAdmin(true);
+      }
+    } catch (e) {
+      console.error('Ошибка инициализации SDK:', e);
+      // Оставляем алерт только для дебага, если нужно:
+      alert('Ошибка инициализации: ' + e.message);
     }
-  } catch (e) {
-    alert('Критическая ошибка Telegram SDK: ' + e.message);
-  }
 
-  // Вызываем загрузку каталога
-  fetchCatalogWithDebug();
-}, []);
+    fetchCatalog();
+  }, []);
 
   // Функция загрузки товаров из PostgreSQL
   const fetchCatalog = async () => {
