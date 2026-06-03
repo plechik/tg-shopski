@@ -6,7 +6,7 @@ import { Carousel, HStack, IconButton, Box } from "@chakra-ui/react";
 import { LuChevronLeft, LuChevronRight } from "react-icons/lu";
 
 // БАЗОВЫЙ URL ТВОЕГО БЭКЕНДА НА RENDER
-const API_BASE_URL = 'https://zolikstore.loca.lt';
+const API_BASE_URL = 'https://tg-shopski.onrender.com';
 const ADMIN_TELEGRAM_ID = 1160765121;
 
 function App() {
