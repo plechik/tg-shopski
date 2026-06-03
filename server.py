@@ -30,7 +30,7 @@ BOT_TOKEN = os.environ.get("BOT_TOKEN", "8944152643:AAGREuxaxUFMKVm6KkB9TZ6v4MBa
 MINI_APP_URL = "https://t.me/zolikstore_bot/app"
 PROXY_URL = 'http://127.0.0.1:12334'
 
-DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://neondb_owner:npg_j1rPE0XQvefH@ep-frosty-cell-ag3xxwrc.c-2.eu-central-1.aws.neon.tech/neondb?sslmode=require")
+DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql+asyncpg://postgres:wasdqwe123@localhost:5432/zolikstore")
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+asyncpg://", 1)
 # =================================================
@@ -212,7 +212,9 @@ async def add_product_image(product_id: int, image_data: ImageCreate, db: AsyncS
 # ЭНДПОИНТ: Прием заказов
 @app.post("/api/orders")
 async def create_order(order: Order):
+    items_text = "\n".join([f"• {item.name} — {item.quantity} шт. x {item.price} руб." for item in order.items])
     print("\n--- 🛒 ПОЛУЧЕН НОВЫЙ ЗАКАЗ ИЗ MINI APP! ---")
+    print(f"Товары:\n{items_text}\n")
     print(f"Общая сумма: {order.total} руб.")
     
     try:
@@ -231,10 +233,21 @@ async def create_order(order: Order):
 
 
 # --- ЛОГИКА ТЕЛЕГРАМ БОТА ---
+import time
+
 @dp.message(CommandStart())
 async def cmd_start(message: types.Message):
     builder = InlineKeyboardBuilder()
-    builder.row(types.InlineKeyboardButton(text="🛍️ Открыть магазин", url=MINI_APP_URL))
+    
+    # Добавляем ?v=ВРЕМЯ, чтобы Telegram думал, что ссылка изменилась, и сбрасывал кэш
+    unique_url = f"https://tg-shopski.vercel.app?v={int(time.time())}"
+    
+    builder.row(
+        types.InlineKeyboardButton(
+            text="🛍️ Открыть магазин", 
+            web_app=types.WebAppInfo(url=unique_url)
+        )
+    )
     
     await message.answer(
         f"Привет, {message.from_user.first_name}!\n\n"
