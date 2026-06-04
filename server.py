@@ -57,7 +57,12 @@ def asyncpg_connector(*args, **kwargs):
     import asyncpg
     kwargs.pop('channel_binding', None)
     return asyncpg.connect(*args, **kwargs)
-engine = create_async_engine(DATABASE_URL)
+
+engine = create_async_engine(
+    DATABASE_URL,
+    async_fallback=True,
+    creator=asyncpg_connector
+)
 async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 Base = declarative_base()
 
