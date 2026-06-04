@@ -31,7 +31,7 @@ B2_ENDPOINT_URL = os.environ.get("B2_ENDPOINT_URL")
 B2_KEY_ID = os.environ.get("B2_KEY_ID")
 B2_APPLICATION_KEY = os.environ.get("B2_APPLICATION_KEY")
 B2_BUCKET_NAME = os.environ.get("B2_BUCKET_NAME")
-MINI_APP_URL = "https://tg-shopski.vercel.app"
+MINI_APP_URL = "https://zolikstore.vercel.app/"
 PROXY_URL = 'http://127.0.0.1:12334'
 
 DATABASE_URL = os.environ.get("DATABASE_URL")

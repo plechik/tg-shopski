@@ -271,7 +271,7 @@ function App() {
               return (
                 <div key={product.id} className="product-card">
                   <div className="product-thumb" onClick={() => setSelectedProduct(product)}>
-                    <img src={product.image} alt={product.name}/>
+                    <img src={product.image} alt={product.name} onError={(e) => { e.target.src = 'https://placehold.co/150x150?text=No+Image' }} />
                     <div className="info-overlay"><Info size={16} /></div>
                   </div>
                   <h3 className="product-title" onClick={() => setSelectedProduct(product)}>{product.name}</h3>
