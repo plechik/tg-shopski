@@ -53,7 +53,12 @@ else:
 dp = Dispatcher()
 
 # ================= DATABASE SETUP =================
-engine = create_async_engine(DATABASE_URL, echo=True)
+engine = create_async_engine(
+    DATABASE_URL,
+    connect_args={
+        "channel_binding": None
+    }
+)
 async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 Base = declarative_base()
 
