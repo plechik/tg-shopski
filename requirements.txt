@@ -8,3 +8,4 @@ pydantic>=2.10
 pydantic-core>=2.27
 aiohttp==3.10.11
 boto3
+python-dotenv
