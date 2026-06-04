@@ -55,12 +55,13 @@ dp = Dispatcher()
 # ================= DATABASE SETUP =================
 def asyncpg_connector(*args, **kwargs):
     import asyncpg
+    # Безопасно удаляем проблемный аргумент, ломая баг совместимости Python 3.13
     kwargs.pop('channel_binding', None)
     return asyncpg.connect(*args, **kwargs)
 
+# Убран невалидный аргумент async_fallback
 engine = create_async_engine(
     DATABASE_URL,
-    async_fallback=True,
     creator=asyncpg_connector
 )
 async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
