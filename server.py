@@ -34,7 +34,7 @@ B2_BUCKET_NAME = os.environ.get("B2_BUCKET_NAME")
 MINI_APP_URL = "https://tg-shopski.vercel.app"
 PROXY_URL = 'http://127.0.0.1:12334'
 
-DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql+asyncpg://postgres:wasdqwe123@localhost:5432/zolikstore")
+DATABASE_URL = os.environ.get("DATABASE_URL")
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+asyncpg://", 1)
 if DATABASE_URL and "sslmode=" in DATABASE_URL:
@@ -53,12 +53,7 @@ else:
 dp = Dispatcher()
 
 # ================= DATABASE SETUP =================
-engine = create_async_engine(
-    DATABASE_URL,
-    connect_args={
-        "channel_binding": None
-    }
-)
+engine = create_async_engine(DATABASE_URL,)
 async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 Base = declarative_base()
 
