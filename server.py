@@ -1,5 +1,7 @@
 import asyncio
 import os
+from dotenv import load_dotenv
+from pathlib import Path
 import boto3  # Используем стандартный стабильный boto3
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends, HTTPException, Form, UploadFile, File
@@ -19,20 +21,25 @@ from sqlalchemy.orm import declarative_base, sessionmaker, relationship, selecti
 from sqlalchemy import Column, Integer, String, Numeric, Boolean, ForeignKey
 from sqlalchemy.future import select
 
-# Настройки Backblaze B2 (S3-совместимого)
-B2_ENDPOINT_URL = os.environ.get("B2_ENDPOINT_URL", "https://s3.eu-central-003.backblazeb2.com")
-B2_KEY_ID = os.environ.get("B2_KEY_ID", "003761b7fdcc2c20000000002")
-B2_APPLICATION_KEY = os.environ.get("B2_APPLICATION_KEY", "K003cLMH4I/CvjGLWuMlcqig2HifotY")
-B2_BUCKET_NAME = os.environ.get("B2_BUCKET_NAME", "zolikstore")
-
+BASE_DIR = Path(__file__).resolve().parent
+load_dotenv(dotenv_path=BASE_DIR / "variables.env")
 # ================= CONFIGURATION =================
-BOT_TOKEN = os.environ.get("BOT_TOKEN", "8944152643:AAGREuxaxUFMKVm6KkB9TZ6v4MBaQjQcSjI")
+BOT_TOKEN = os.environ.get("BOT_TOKEN")
+DATABASE_URL = os.environ.get("DATABASE_URL")
+
+B2_ENDPOINT_URL = os.environ.get("B2_ENDPOINT_URL")
+B2_KEY_ID = os.environ.get("B2_KEY_ID")
+B2_APPLICATION_KEY = os.environ.get("B2_APPLICATION_KEY")
+B2_BUCKET_NAME = os.environ.get("B2_BUCKET_NAME")
 MINI_APP_URL = "https://tg-shopski.vercel.app"
 PROXY_URL = 'http://127.0.0.1:12334'
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql+asyncpg://postgres:wasdqwe123@localhost:5432/zolikstore")
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+asyncpg://", 1)
+if DATABASE_URL and "sslmode=" in DATABASE_URL:
+    DATABASE_URL = DATABASE_URL.replace("sslmode=require", "ssl=require")
+    DATABASE_URL = DATABASE_URL.replace("sslmode=", "ssl=")
 # =================================================
 
 IS_RENDER = os.environ.get("PORT") is not None
@@ -85,7 +92,6 @@ class Order(BaseModel):
     items: List[Item]
     total: int
 
-# ДОБАВИЛИ МОДЕЛЬ, КОТОРАЯ ПОДСФЕЧИВАЛАСЬ ЖЕЛТЫМ
 class ImageCreate(BaseModel):
     image_url: str
     is_main: bool = False
@@ -145,7 +151,6 @@ app.add_middleware(
 
 
 # --- API ЭНДПОИНТЫ ---
-
 @app.get("/api/products")
 async def get_catalog(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Product).options(selectinload(Product.images)))
@@ -171,7 +176,6 @@ async def create_product(
     )
     db.add(new_product)
     await db.commit()
-    await db.refresh(new_product)
 
     if image_file:
         try:
@@ -183,6 +187,13 @@ async def create_product(
             )
             db.add(new_image)
             await db.commit()
+            
+            await db.execute(
+                select(Product)
+                .where(Product.id == new_product.id)
+                .options(selectinload(Product.images))
+            )
+            
         except Exception as e:
             print(f"Ошибка при загрузке картинки в Backblaze B2: {e}")
             return {"status": "partial_success", "product_id": new_product.id, "warning": "Товар создан, но картинка не загрузилась"}

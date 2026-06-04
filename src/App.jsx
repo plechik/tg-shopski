@@ -6,7 +6,7 @@ import { Carousel, HStack, IconButton, Box } from "@chakra-ui/react";
 import { LuChevronLeft, LuChevronRight } from "react-icons/lu";
 
 // БАЗОВЫЙ URL ТВОЕГО БЭКЕНДА НА RENDER
-const API_BASE_URL = 'https://zolikstore.loca.lt';
+const API_BASE_URL = 'https://tg-shopski.onrender.com';
 const ADMIN_TELEGRAM_ID = 1160765121;
 
 function App() {
@@ -48,34 +48,37 @@ function App() {
 
     // 4. Загружаем товары из базы данных
     fetchCatalog();
-  }, []);
+      }, []);
 
-  // Функция загрузки товаров из PostgreSQL
-  const fetchCatalog = async () => {
-    try {
-      setIsLoading(true);
-      const response = await fetch(`${API_BASE_URL}/api/products`);
-      if (response.ok) {
-        const data = await response.json();
-        
-        // Мапим данные из Postgres (массив images) под старую структуру карточки
-        const formattedProducts = data.map(p => ({
-          id: p.id,
-          name: p.name,
-          brand: p.brand,
-          price: Number(p.price),
-          description: p.description,
-          image: p.images && p.images.length > 0 ? p.images[0].image_url : 'https://placehold.co/300x300?text=No+Image'
-        }));
-        
-        setProducts(formattedProducts);
+      // Функция загрузки товаров из PostgreSQL
+      const fetchCatalog = async () => {
+      try {
+        setIsLoading(true);
+        const response = await fetch(`${API_BASE_URL}/api/products`);
+        if (response.ok) {
+          const data = await response.json();
+          
+          const formattedProducts = data.map(p => {
+            const imgUrl = p.images && p.images.length > 0 ? p.images[0].image_url : null;
+            
+            return {
+              id: p.id,
+              name: p.name,
+              brand: p.brand,
+              price: Number(p.price),
+              description: p.description,
+              image: imgUrl || 'https://placehold.co/300x300?text=No+Image'
+            };
+          });
+          
+          setProducts(formattedProducts);
+        }
+      } catch (error) {
+        console.error('Ошибка загрузки каталога:', error);
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error) {
-      console.error('Ошибка загрузки каталога:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    };
 
   // 2. Клик по Главной Кнопке Telegram
   useEffect(() => {
@@ -268,7 +271,7 @@ function App() {
               return (
                 <div key={product.id} className="product-card">
                   <div className="product-thumb" onClick={() => setSelectedProduct(product)}>
-                    <img src={product.image} alt={product.name} onError={(e) => { e.target.src = 'https://placehold.co/150x150?text=No+Image' }} />
+                    <img src={product.image} alt={product.name}/>
                     <div className="info-overlay"><Info size={16} /></div>
                   </div>
                   <h3 className="product-title" onClick={() => setSelectedProduct(product)}>{product.name}</h3>
