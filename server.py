@@ -53,6 +53,10 @@ else:
 dp = Dispatcher()
 
 # ================= DATABASE SETUP =================
+def asyncpg_connector(*args, **kwargs):
+    import asyncpg
+    kwargs.pop('channel_binding', None)
+    return asyncpg.connect(*args, **kwargs)
 engine = create_async_engine(DATABASE_URL)
 async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 Base = declarative_base()
@@ -261,7 +265,7 @@ async def cmd_start(message: types.Message):
         reply_markup=builder.as_markup(),
         parse_mode="Markdown"
     )
-    
+
 if __name__ == "__main__":
     # Берем порт из переменной окружения Render, если ее нет — ставим 8000
     port = int(os.environ.get("PORT", 8000))
