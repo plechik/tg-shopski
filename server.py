@@ -34,7 +34,6 @@ B2_BUCKET_NAME = os.environ.get("B2_BUCKET_NAME")
 MINI_APP_URL = "https://zolikstore.vercel.app/"
 PROXY_URL = 'http://127.0.0.1:12334'
 
-DATABASE_URL = os.environ.get("DATABASE_URL")
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+asyncpg://", 1)
 if DATABASE_URL and "sslmode=" in DATABASE_URL:
@@ -87,13 +86,22 @@ class ProductImage(Base):
 class Item(BaseModel):
     id: int
     name: str
+    brand: str  # Добавили бренд, чтобы выводить его в информации о заказе
     price: int
     image: str
     quantity: int = 1
 
+class CustomerDetails(BaseModel):
+    fullName: str
+    phone: str
+    deliveryMethod: str  # cdek | pickup
+    address: Optional[str] = None
+    comment: Optional[str] = None
+
 class Order(BaseModel):
     items: List[Item]
     total: int
+    customer_details: CustomerDetails  # Принимаем новые данные формы оформления
 
 class ImageCreate(BaseModel):
     image_url: str
@@ -204,7 +212,7 @@ async def create_product(
     return {"status": "success", "product_id": new_product.id}
 
 
-# ЭНДПОИНТ: Ручное добавление текстовой ссылки на картинку (Использует ImageCreate)
+# ЭНДПОИНТ: Ручное добавление текстовой ссылки на картинку
 @app.post("/api/products/{product_id}/images")
 async def add_product_image(product_id: int, image_data: ImageCreate, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Product).where(Product.id == product_id))
@@ -223,25 +231,57 @@ async def add_product_image(product_id: int, image_data: ImageCreate, db: AsyncS
     return {"status": "success", "message": "Картинка успешно добавлена"}
 
 
-# ЭНДПОИНТ: Прием заказов
+# ОБНОВЛЕННЫЙ ЭНДПОИНТ: Прием заказов со страницы оформления
 @app.post("/api/orders")
 async def create_order(order: Order):
-    items_text = "\n".join([f"• {item.name} — {item.quantity} шт. x {item.price} руб." for item in order.items])
+    details = order.customer_details
+    
+    # 1. Формируем красивый текстовый список товаров для логов и Telegram
+    items_text = "\n".join([
+        f"• {item.brand} {item.name} — *{item.quantity} шт.* x {item.price:,} руб." 
+        for item in order.items
+    ])
+    
+    # Логирование на сервере
     print("\n--- 🛒 ПОЛУЧЕН НОВЫЙ ЗАКАЗ ИЗ MINI APP! ---")
-    print(f"Товары:\n{items_text}\n")
-    print(f"Общая сумма: {order.total} руб.")
+    print(f"Покупатель: {details.fullName} ({details.phone})")
+    print(f"Доставка: {details.deliveryMethod} | Адрес: {details.address}")
+    print(f"Товары:\n{items_text}")
+    print(f"Общая сумма: {order.total} руб.\n")
+    
+    # 2. Формируем подробный тип доставки
+    delivery_type = "🚀 СДЭК / Почта России" if details.deliveryMethod == "cdek" else "🏠 Самовывоз из шоурума"
+    
+    # 3. Собираем итоговое Markdown-сообщение для менеджера
+    telegram_message = (
+        f"🛍️ **ПОЛУЧЕН НОВЫЙ ЗАКАЗ!**\n\n"
+        f"👤 **Покупатель:** {details.fullName}\n"
+        f"📞 **Телефон:** `{details.phone}`\n\n"
+        f"📦 **Способ доставки:** {delivery_type}\n"
+    )
+    
+    if details.deliveryMethod == "cdek" and details.address:
+        telegram_message += f"📍 **Адрес доставки:** {details.address}\n"
+        
+    if details.comment:
+        telegram_message += f"💬 **Комментарий:** _{details.comment}_\n"
+        
+    telegram_message += (
+        f"\n👟 **Состав заказа:**\n{items_text}\n\n"
+        f"💰 **ИТОГО К ОПЛАТЕ:** **{order.total:,} руб.**"
+    )
     
     try:
-        items_text = "\n".join([f"• {item.name} — **{item.quantity} шт.** x {item.price} руб." for item in order.items])
+        # Отправляем сообщение администратору
         await bot.send_message(
             chat_id=1160765121,
-            text=f"🛍️ **Новый заказ!**\n\n"
-                 f"**Товары:**\n{items_text}\n\n"
-                 f"💰 **Итого:** {order.total} руб.",
+            text=telegram_message,
             parse_mode="Markdown"
         )
     except Exception as e:
-        print(f"Ошибка отправки сообщения в ТГ: {e}")
+        print(f"Ошибка отправки сообщения в Telegram: {e}")
+        # Не бросаем HTTPException, чтобы фронтенд увидел успешное оформление, 
+        # даже если упало уведомление бота (хотя логирование ошибки обязательно)
     
     return {"status": "success"}
 

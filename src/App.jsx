@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { mainButton, miniApp } from '@telegram-apps/sdk-react';
-import { ShoppingBag, X, Plus, Minus, Info, PackagePlus, Search, Check } from 'lucide-react';
+import { miniApp } from '@telegram-apps/sdk-react';
+import { ShoppingBag, X, Plus, Minus, Info, PackagePlus, Search, Check, ChevronLeft, CreditCard, Truck, User, Phone, MapPin } from 'lucide-react';
 import './App.css';
 import { Carousel, IconButton, Box } from "@chakra-ui/react";
 import { LuChevronLeft, LuChevronRight } from "react-icons/lu";
@@ -17,6 +17,20 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBrand, setSelectedBrand] = useState('Все');
   
+  // Состояния для стадий оформления заказа
+  const [isCheckoutStage, setIsCheckoutStage] = useState(false);
+  const [isOrderSuccess, setIsOrderSuccess] = useState(false);
+  const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
+
+  // Данные формы заказа
+  const [orderForm, setOrderForm] = useState({
+    fullName: '',
+    phone: '',
+    address: '',
+    deliveryMethod: 'cdek', // cdek | pickup
+    comment: ''
+  });
+  
   const [isAdmin, setIsAdmin] = useState(false);
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   const [newProduct, setNewProduct] = useState({ name: '', brand: '', price: '', description: '', image_file: null });
@@ -26,18 +40,24 @@ function App() {
       if (miniApp && typeof miniApp.mount === 'function' && !miniApp.isMounted()) {
         miniApp.mount();
       }
-      if (mainButton && typeof mainButton.mount === 'function' && !mainButton.isMounted()) {
-        mainButton.mount();
-      }
 
       if (window.Telegram?.WebApp) {
         const tg = window.Telegram.WebApp;
         tg.ready();
         tg.expand();
 
-        const userId = tg.initDataUnsafe?.user?.id;
-        if (userId && String(userId).trim() === String(ADMIN_TELEGRAM_ID).trim()) {
-          setIsAdmin(true);
+        // Подтягиваем имя пользователя из Telegram, если оно доступно
+        const user = tg.initDataUnsafe?.user;
+        if (user) {
+          const guessedName = [user.first_name, user.last_name].filter(Boolean).join(' ');
+          setOrderForm(prev => ({
+            ...prev,
+            fullName: guessedName
+          }));
+
+          if (String(user.id).trim() === String(ADMIN_TELEGRAM_ID).trim()) {
+            setIsAdmin(true);
+          }
         }
       }
     } catch (error) {
@@ -76,38 +96,8 @@ function App() {
     }
   };
 
-  useEffect(() => {
-    const handleMainButtonClick = () => {
-      handleCheckout();
-    };
-
-    try {
-      mainButton.onClick(handleMainButtonClick);
-      return () => {
-        mainButton.offClick(handleMainButtonClick);
-      };
-    } catch (e) {}
-  }, [cart]);
-
-  useEffect(() => {
-    try {
-      if (cart.length > 0) {
-        const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-        mainButton.setParams({
-          text: `Оформить заказ: ${total.toLocaleString()} ₽`,
-          isVisible: true,
-          isEnabled: true,
-          backgroundColor: '#2563eb', 
-          textColor: '#ffffff'
-        });
-      } else {
-        mainButton.hide();
-        setIsCartOpen(false);
-      }
-    } catch (e) {}
-  }, [cart]);
-
   const totalItemsCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+  const totalAmount = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
   const addToCart = (product) => {
     const existingItem = cart.find(item => item.id === product.id);
@@ -124,7 +114,12 @@ function App() {
     const existingItem = cart.find(item => item.id === productId);
     if (!existingItem) return;
     if (existingItem.quantity === 1) {
-      setCart(cart.filter(item => item.id !== productId));
+      const updatedCart = cart.filter(item => item.id !== productId);
+      setCart(updatedCart);
+      if (updatedCart.length === 0) {
+        setIsCartOpen(false);
+        setIsCheckoutStage(false);
+      }
     } else {
       setCart(cart.map(item => 
         item.id === productId ? { ...item, quantity: item.quantity - 1 } : item
@@ -132,30 +127,43 @@ function App() {
     }
   };
 
-  const clearCart = () => setCart([]);
+  const clearCart = () => {
+    setCart([]);
+    setIsCartOpen(false);
+    setIsCheckoutStage(false);
+  };
 
-  const handleCheckout = async () => {
-    const totalAmount = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const handleFormChange = (e) => {
+    const { name, value } = e.target;
+    setOrderForm(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleCheckoutSubmit = async (e) => {
+    e.preventDefault();
     if (cart.length === 0) return;
 
     try {
+      setIsSubmittingOrder(true);
       const response = await fetch(`${API_BASE_URL}/api/orders`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           items: cart, 
-          total: totalAmount 
+          total: totalAmount,
+          customer_details: orderForm
         })
       });
       
       if (response.ok) {
         setCart([]);
-        alert('Заказ успешно отправлен!');
+        setIsOrderSuccess(true);
       } else {
         alert('Сервер вернул ошибку: ' + response.status);
       }
     } catch (error) {
-      alert('Не удалось достучаться до бэкенда: ' + error.message);
+      alert('Не удалось отправить заказ: ' + error.message);
+    } finally {
+      setIsSubmittingOrder(false);
     }
   };
 
@@ -192,10 +200,8 @@ function App() {
     }
   };
 
-  // Получаем массив уникальных брендов для фильтров
   const uniqueBrands = ['Все', ...new Set(products.map(p => p.brand).filter(Boolean))];
 
-  // Фильтрация по поиску и по выбранному бренду
   const filteredProducts = products.filter(product => {
     const matchesBrand = selectedBrand === 'Все' || product.brand === selectedBrand;
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -203,6 +209,171 @@ function App() {
     return matchesBrand && matchesSearch;
   });
 
+  // ЭКРАН 1: Успешное завершение заказа
+  if (isOrderSuccess) {
+    return (
+      <div className="shop-container success-screen">
+        <div className="success-card">
+          <div className="success-icon-animated">
+            <Check size={48} />
+          </div>
+          <h2>Заказ принят!</h2>
+          <p className="success-message">Менеджер уже обрабатывает вашу заявку. В ближайшее время мы свяжемся с вами в Telegram для подтверждения деталей.</p>
+          <div className="order-summary-box">
+            <span>Сумма к оплате:</span>
+            <strong>{totalAmount.toLocaleString()} ₽</strong>
+          </div>
+          <button 
+            className="back-to-shop-btn" 
+            onClick={() => {
+              setIsOrderSuccess(false);
+              setIsCheckoutStage(false);
+            }}
+          >
+            Вернуться в магазин
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ЭКРАН 2: Полноценная страница оформления заказа
+  if (isCheckoutStage) {
+    return (
+      <div className="shop-container checkout-page">
+        <header className="checkout-header">
+          <button className="back-btn" onClick={() => setIsCheckoutStage(false)}>
+            <ChevronLeft size={24} />
+          </button>
+          <h2>Оформление заказа</h2>
+          <div style={{ width: 24 }}></div>
+        </header>
+
+        <div className="checkout-scroll-content">
+          {/* Краткий список товаров в заказе */}
+          <section className="checkout-section">
+            <h3 className="section-title">Ваш заказ ({totalItemsCount})</h3>
+            <div className="checkout-items-mini">
+              {cart.map(item => (
+                <div key={item.id} className="mini-item">
+                  <img src={item.image} alt={item.name} />
+                  <div className="mini-item-details">
+                    <h4>{item.name}</h4>
+                    <span className="mini-item-meta">{item.brand} • {item.quantity} шт.</span>
+                  </div>
+                  <span className="mini-item-price">{(item.price * item.quantity).toLocaleString()} ₽</span>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* Форма с контактными данными */}
+          <form id="checkout-main-form" onSubmit={handleCheckoutSubmit} className="checkout-form">
+            <section className="checkout-section">
+              <h3 className="section-title">Контактные данные</h3>
+              
+              <div className="checkout-input-field">
+                <User size={18} className="input-field-icon" />
+                <input 
+                  type="text" 
+                  name="fullName" 
+                  placeholder="Имя и Фамилия" 
+                  value={orderForm.fullName}
+                  onChange={handleFormChange}
+                  required 
+                />
+              </div>
+
+              <div className="checkout-input-field">
+                <Phone size={18} className="input-field-icon" />
+                <input 
+                  type="tel" 
+                  name="phone" 
+                  placeholder="Номер телефона" 
+                  value={orderForm.phone}
+                  onChange={handleFormChange}
+                  required 
+                />
+              </div>
+            </section>
+
+            <section className="checkout-section">
+              <h3 className="section-title">Способ доставки</h3>
+              <div className="delivery-selector">
+                <div 
+                  className={`delivery-option ${orderForm.deliveryMethod === 'cdek' ? 'active' : ''}`}
+                  onClick={() => setOrderForm(prev => ({ ...prev, deliveryMethod: 'cdek' }))}
+                >
+                  <Truck size={20} />
+                  <div className="option-info">
+                    <h4>СДЭК / Почта</h4>
+                    <p>До отделения или курьером</p>
+                  </div>
+                  <div className="radio-dot"></div>
+                </div>
+
+                <div 
+                  className={`delivery-option ${orderForm.deliveryMethod === 'pickup' ? 'active' : ''}`}
+                  onClick={() => setOrderForm(prev => ({ ...prev, deliveryMethod: 'pickup' }))}
+                >
+                  <MapPin size={20} />
+                  <div className="option-info">
+                    <h4>Самовывоз</h4>
+                    <p>Из нашего шоурума</p>
+                  </div>
+                  <div className="radio-dot"></div>
+                </div>
+              </div>
+
+              {orderForm.deliveryMethod === 'cdek' && (
+                <div className="checkout-input-field mt-3">
+                  <MapPin size={18} className="input-field-icon" />
+                  <input 
+                    type="text" 
+                    name="address" 
+                    placeholder="Город, адрес или пункт выдачи" 
+                    value={orderForm.address}
+                    onChange={handleFormChange}
+                    required 
+                  />
+                </div>
+              )}
+            </section>
+
+            <section className="checkout-section">
+              <h3 className="section-title">Комментарий к заказу</h3>
+              <textarea 
+                name="comment" 
+                rows="2" 
+                placeholder="Укажите нужный размер обуви или важные примечания..."
+                value={orderForm.comment}
+                onChange={handleFormChange}
+                className="checkout-textarea"
+              />
+            </section>
+          </form>
+        </div>
+
+        {/* Фиксированная нижняя панель подтверждения */}
+        <div className="checkout-sticky-bottom">
+          <div className="total-row">
+            <span>Итого к оплате:</span>
+            <span className="total-price">{totalAmount.toLocaleString()} ₽</span>
+          </div>
+          <button 
+            type="submit" 
+            form="checkout-main-form" 
+            className="confirm-order-btn"
+            disabled={isSubmittingOrder}
+          >
+            {isSubmittingOrder ? 'Отправка заказа...' : 'Подтвердить заказ'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ЭКРАН 3: Основная витрина магазина
   return (
     <div className="shop-container">
       <header className="shop-header">
@@ -257,7 +428,7 @@ function App() {
         </div>
       ) : (
         <>
-          {/* Слайдер новинок (показываем, если фильтры пустые) */}
+          {/* Слайдер новинок */}
           {products.length > 0 && selectedBrand === 'Все' && !searchQuery && (
             <div className="carousel-container">
               <h2 className="block-title">Новинки</h2>
@@ -343,7 +514,20 @@ function App() {
         </>
       )}
 
-      {/* КАРТОЧКА ТОВАРА ПОДРОБНО */}
+      {/* Полоска быстрой корзины внизу главного экрана (если в ней есть товары) */}
+      {cart.length > 0 && (
+        <div className="floating-cart-bar" onClick={() => setIsCartOpen(true)}>
+          <div className="floating-cart-info">
+            <ShoppingBag size={18} />
+            <span>В корзине {totalItemsCount} пары</span>
+          </div>
+          <div className="floating-cart-price">
+            {totalAmount.toLocaleString()} ₽
+          </div>
+        </div>
+      )}
+
+      {/* ДЕТАЛЬНАЯ КАРТОЧКА ТОВАРА */}
       {selectedProduct && (() => {
         const modalCartItem = cart.find(item => item.id === selectedProduct.id);
         return (
@@ -416,9 +600,25 @@ function App() {
                 </div>
               ))}
             </div>
-            <button className="clear-cart-btn-modal" onClick={clearCart}>
-              Очистить корзину полностью
-            </button>
+            
+            <div className="cart-modal-bottom-actions">
+              <div className="cart-total-summary">
+                <span>Итого:</span>
+                <h3>{totalAmount.toLocaleString()} ₽</h3>
+              </div>
+              <button 
+                className="go-to-checkout-btn"
+                onClick={() => {
+                  setIsCartOpen(false);
+                  setIsCheckoutStage(true);
+                }}
+              >
+                Перейти к оформлению
+              </button>
+              <button className="clear-cart-btn-modal" onClick={clearCart}>
+                Очистить полностью
+              </button>
+            </div>
           </div>
         </div>
       )}
