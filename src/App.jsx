@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { miniApp } from '@telegram-apps/sdk-react';
-import { ShoppingBag, X, Plus, Minus, Info, PackagePlus, Search, Check, ChevronLeft, CreditCard, Truck, User, Phone, MapPin } from 'lucide-react';
+import { ShoppingBag, X, Plus, Minus, Info, PackagePlus, Search, Check, ArrowLeft } from 'lucide-react';
 import './App.css';
 import { Carousel, IconButton, Box } from "@chakra-ui/react";
 import { LuChevronLeft, LuChevronRight } from "react-icons/lu";
 
-const API_BASE_URL = 'https://tg-shopski.onrender.com';
+const API_BASE_URL = 'https://zolikstore.loca.lt';
 const ADMIN_TELEGRAM_ID = 1160765121;
 
 function App() {
@@ -13,27 +13,24 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [cart, setCart] = useState([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isCheckoutMode, setIsCheckoutMode] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBrand, setSelectedBrand] = useState('Все');
   
-  // Состояния для стадий оформления заказа
-  const [isCheckoutStage, setIsCheckoutStage] = useState(false);
-  const [isOrderSuccess, setIsOrderSuccess] = useState(false);
-  const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
-
-  // Данные формы заказа
-  const [orderForm, setOrderForm] = useState({
-    fullName: '',
-    phone: '',
-    address: '',
-    deliveryMethod: 'cdek', // cdek | pickup
-    comment: ''
-  });
-  
   const [isAdmin, setIsAdmin] = useState(false);
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   const [newProduct, setNewProduct] = useState({ name: '', brand: '', price: '', description: '', image_file: null });
+
+  const [customerDetails, setCustomerDetails] = useState({
+    fullName: '',
+    phone: '',
+    deliveryMethod: 'cdek',
+    address: '',
+    comment: ''
+  });
 
   useEffect(() => {
     try {
@@ -46,18 +43,9 @@ function App() {
         tg.ready();
         tg.expand();
 
-        // Подтягиваем имя пользователя из Telegram, если оно доступно
-        const user = tg.initDataUnsafe?.user;
-        if (user) {
-          const guessedName = [user.first_name, user.last_name].filter(Boolean).join(' ');
-          setOrderForm(prev => ({
-            ...prev,
-            fullName: guessedName
-          }));
-
-          if (String(user.id).trim() === String(ADMIN_TELEGRAM_ID).trim()) {
-            setIsAdmin(true);
-          }
+        const userId = tg.initDataUnsafe?.user?.id;
+        if (userId && String(userId).trim() === String(ADMIN_TELEGRAM_ID).trim()) {
+          setIsAdmin(true);
         }
       }
     } catch (error) {
@@ -76,17 +64,15 @@ function App() {
         
         const formattedProducts = data.map(p => {
           const imgUrl = p.images && p.images.length > 0 ? p.images[0].image_url : null;
-          
           return {
             id: p.id,
             name: p.name,
             brand: p.brand || 'Premium',
             price: Number(p.price),
             description: p.description,
-            image: imgUrl || 'https://placehold.co/300x300?text=No+Image'
+            image: imgUrl || 'https://placehold.co/300x300/1e293b/f8fafc?text=No+Image'
           };
         });
-        
         setProducts(formattedProducts);
       }
     } catch (error) {
@@ -117,8 +103,7 @@ function App() {
       const updatedCart = cart.filter(item => item.id !== productId);
       setCart(updatedCart);
       if (updatedCart.length === 0) {
-        setIsCartOpen(false);
-        setIsCheckoutStage(false);
+        setIsCheckoutMode(false);
       }
     } else {
       setCart(cart.map(item => 
@@ -129,41 +114,38 @@ function App() {
 
   const clearCart = () => {
     setCart([]);
-    setIsCartOpen(false);
-    setIsCheckoutStage(false);
+    setIsCheckoutMode(false);
   };
 
-  const handleFormChange = (e) => {
-    const { name, value } = e.target;
-    setOrderForm(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleCheckoutSubmit = async (e) => {
+  const handleConfirmOrder = async (e) => {
     e.preventDefault();
     if (cart.length === 0) return;
 
+    if (customerDetails.deliveryMethod === 'cdek' && !customerDetails.address.trim()) {
+      alert('Пожалуйста, укажите адрес доставки для СДЭК');
+      return;
+    }
+
     try {
-      setIsSubmittingOrder(true);
       const response = await fetch(`${API_BASE_URL}/api/orders`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           items: cart, 
           total: totalAmount,
-          customer_details: orderForm
+          customer_details: customerDetails
         })
       });
       
       if (response.ok) {
         setCart([]);
-        setIsOrderSuccess(true);
+        setIsSuccess(true);
+        setIsCheckoutMode(false);
       } else {
-        alert('Сервер вернул ошибку: ' + response.status);
+        alert('Ошибка при отправке заказа: ' + response.status);
       }
     } catch (error) {
-      alert('Не удалось отправить заказ: ' + error.message);
-    } finally {
-      setIsSubmittingOrder(false);
+      alert('Ошибка соединения с сервером: ' + error.message);
     }
   };
 
@@ -209,174 +191,127 @@ function App() {
     return matchesBrand && matchesSearch;
   });
 
-  // ЭКРАН 1: Успешное завершение заказа
-  if (isOrderSuccess) {
+  if (isSuccess) {
     return (
-      <div className="shop-container success-screen">
+      <div className="success-screen">
         <div className="success-card">
           <div className="success-icon-animated">
-            <Check size={48} />
+            <Check size={40} />
           </div>
           <h2>Заказ принят!</h2>
-          <p className="success-message">Менеджер уже обрабатывает вашу заявку. В ближайшее время мы свяжемся с вами в Telegram для подтверждения деталей.</p>
-          <div className="order-summary-box">
-            <span>Сумма к оплате:</span>
-            <strong>{totalAmount.toLocaleString()} ₽</strong>
-          </div>
-          <button 
-            className="back-to-shop-btn" 
-            onClick={() => {
-              setIsOrderSuccess(false);
-              setIsCheckoutStage(false);
-            }}
-          >
-            Вернуться в магазин
+          <p className="modal-description" style={{marginBottom: '24px'}}>
+            Менеджер уже обрабатывает твою заявку и свяжется в Telegram в ближайшее время.
+          </p>
+          <button className="confirm-order-btn" onClick={() => setIsSuccess(false)}>
+            Вернуться в каталог
           </button>
         </div>
       </div>
     );
   }
 
-  // ЭКРАН 2: Полноценная страница оформления заказа
-  if (isCheckoutStage) {
+  if (isCheckoutMode) {
     return (
-      <div className="shop-container checkout-page">
+      <div className="checkout-page">
         <header className="checkout-header">
-          <button className="back-btn" onClick={() => setIsCheckoutStage(false)}>
-            <ChevronLeft size={24} />
+          <button className="nav-trigger close-modal-btn" style={{position: 'static'}} onClick={() => setIsCheckoutMode(false)}>
+            <ArrowLeft size={20} />
           </button>
-          <h2>Оформление заказа</h2>
-          <div style={{ width: 24 }}></div>
+          <h3>Оформление заказа</h3>
+          <div style={{width: '36px'}}></div>
         </header>
 
         <div className="checkout-scroll-content">
-          {/* Краткий список товаров в заказе */}
-          <section className="checkout-section">
-            <h3 className="section-title">Ваш заказ ({totalItemsCount})</h3>
-            <div className="checkout-items-mini">
-              {cart.map(item => (
-                <div key={item.id} className="mini-item">
-                  <img src={item.image} alt={item.name} />
-                  <div className="mini-item-details">
-                    <h4>{item.name}</h4>
-                    <span className="mini-item-meta">{item.brand} • {item.quantity} шт.</span>
-                  </div>
-                  <span className="mini-item-price">{(item.price * item.quantity).toLocaleString()} ₽</span>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {/* Форма с контактными данными */}
-          <form id="checkout-main-form" onSubmit={handleCheckoutSubmit} className="checkout-form">
-            <section className="checkout-section">
-              <h3 className="section-title">Контактные данные</h3>
-              
+          <form onSubmit={handleConfirmOrder}>
+            <div className="checkout-section">
+              <div className="section-title">Контакты</div>
               <div className="checkout-input-field">
-                <User size={18} className="input-field-icon" />
                 <input 
                   type="text" 
-                  name="fullName" 
-                  placeholder="Имя и Фамилия" 
-                  value={orderForm.fullName}
-                  onChange={handleFormChange}
+                  placeholder="ФИО получателя" 
+                  value={customerDetails.fullName}
+                  onChange={e => setCustomerDetails({...customerDetails, fullName: e.target.value})}
                   required 
                 />
               </div>
-
               <div className="checkout-input-field">
-                <Phone size={18} className="input-field-icon" />
                 <input 
                   type="tel" 
-                  name="phone" 
                   placeholder="Номер телефона" 
-                  value={orderForm.phone}
-                  onChange={handleFormChange}
+                  value={customerDetails.phone}
+                  onChange={e => setCustomerDetails({...customerDetails, phone: e.target.value})}
                   required 
                 />
               </div>
-            </section>
+            </div>
 
-            <section className="checkout-section">
-              <h3 className="section-title">Способ доставки</h3>
+            <div className="checkout-section">
+              <div className="section-title">Способ доставки</div>
               <div className="delivery-selector">
                 <div 
-                  className={`delivery-option ${orderForm.deliveryMethod === 'cdek' ? 'active' : ''}`}
-                  onClick={() => setOrderForm(prev => ({ ...prev, deliveryMethod: 'cdek' }))}
+                  className={`delivery-option ${customerDetails.deliveryMethod === 'cdek' ? 'active' : ''}`}
+                  onClick={() => setCustomerDetails({...customerDetails, deliveryMethod: 'cdek'})}
                 >
-                  <Truck size={20} />
-                  <div className="option-info">
-                    <h4>СДЭК / Почта</h4>
-                    <p>До отделения или курьером</p>
-                  </div>
                   <div className="radio-dot"></div>
+                  <div className="option-info">
+                    <h4>СДЭК / Почта России</h4>
+                    <p>Доставка в любой регион до пункта выдачи или двери</p>
+                  </div>
                 </div>
 
                 <div 
-                  className={`delivery-option ${orderForm.deliveryMethod === 'pickup' ? 'active' : ''}`}
-                  onClick={() => setOrderForm(prev => ({ ...prev, deliveryMethod: 'pickup' }))}
+                  className={`delivery-option ${customerDetails.deliveryMethod === 'pickup' ? 'active' : ''}`}
+                  onClick={() => setCustomerDetails({...customerDetails, deliveryMethod: 'pickup', address: 'Шоурум ZolikStore'})}
                 >
-                  <MapPin size={20} />
+                  <div className="radio-dot"></div>
                   <div className="option-info">
                     <h4>Самовывоз</h4>
-                    <p>Из нашего шоурума</p>
+                    <p>Бесплатно из нашего шоурума</p>
                   </div>
-                  <div className="radio-dot"></div>
                 </div>
               </div>
+            </div>
 
-              {orderForm.deliveryMethod === 'cdek' && (
-                <div className="checkout-input-field mt-3">
-                  <MapPin size={18} className="input-field-icon" />
+            {customerDetails.deliveryMethod === 'cdek' && (
+              <div className="checkout-section">
+                <div className="section-title">Адрес доставки</div>
+                <div className="checkout-input-field">
                   <input 
                     type="text" 
-                    name="address" 
-                    placeholder="Город, адрес или пункт выдачи" 
-                    value={orderForm.address}
-                    onChange={handleFormChange}
-                    required 
+                    placeholder="Город, улица, дом, кв/офис" 
+                    value={customerDetails.address === 'Шоурум ZolikStore' ? '' : customerDetails.address}
+                    onChange={e => setCustomerDetails({...customerDetails, address: e.target.value})}
+                    required
                   />
                 </div>
-              )}
-            </section>
+              </div>
+            )}
 
-            <section className="checkout-section">
-              <h3 className="section-title">Комментарий к заказу</h3>
+            <div className="checkout-section">
+              <div className="section-title">Комментарий (необязательно)</div>
               <textarea 
-                name="comment" 
-                rows="2" 
+                className="checkout-textarea" 
+                rows="3" 
                 placeholder="Укажите нужный размер обуви или важные примечания..."
-                value={orderForm.comment}
-                onChange={handleFormChange}
-                className="checkout-textarea"
+                value={customerDetails.comment}
+                onChange={e => setCustomerDetails({...customerDetails, comment: e.target.value})}
               />
-            </section>
-          </form>
-        </div>
+            </div>
 
-        {/* Фиксированная нижняя панель подтверждения */}
-        <div className="checkout-sticky-bottom">
-          <div className="total-row">
-            <span>Итого к оплате:</span>
-            <span className="total-price">{totalAmount.toLocaleString()} ₽</span>
-          </div>
-          <button 
-            type="submit" 
-            form="checkout-main-form" 
-            className="confirm-order-btn"
-            disabled={isSubmittingOrder}
-          >
-            {isSubmittingOrder ? 'Отправка заказа...' : 'Подтвердить заказ'}
-          </button>
+            <div className="checkout-sticky-bottom">
+              <button type="submit" className="confirm-order-btn">
+                Подтвердить заказ • {totalAmount.toLocaleString()} ₽
+              </button>
+            </div>
+          </form>
         </div>
       </div>
     );
   }
 
-  // ЭКРАН 3: Основная витрина магазина
   return (
-    <div className="shop-container">
-      <header className="shop-header">
+    <>
+    <header className="shop-header">
         <div className="logo-section">
           <h1>ZolikStore</h1>
         </div>
@@ -395,8 +330,8 @@ function App() {
           </div>
         </div>
       </header>
+    <div className="shop-container">
 
-      {/* Поисковая панель */}
       <div className="search-bar">
         <Search size={18} className="search-icon" />
         <input 
@@ -408,7 +343,6 @@ function App() {
         {searchQuery && <X size={18} className="clear-search" onClick={() => setSearchQuery('')} />}
       </div>
 
-      {/* Горизонтальный выбор брендов */}
       <div className="brands-filter">
         {uniqueBrands.map(brand => (
           <button 
@@ -428,7 +362,6 @@ function App() {
         </div>
       ) : (
         <>
-          {/* Слайдер новинок */}
           {products.length > 0 && selectedBrand === 'Все' && !searchQuery && (
             <div className="carousel-container">
               <h2 className="block-title">Новинки</h2>
@@ -436,12 +369,12 @@ function App() {
                 <Carousel.ItemGroup>
                   {products.slice(0, 8).map((product, index) => (
                     <Carousel.Item key={`slide-${product.id}`} index={index}>
-                      <Box w="100%" h="220px" rounded="20px" overflow="hidden" position="relative" className="slide-card" onClick={() => setSelectedProduct(product)}>
+                      <Box w="100%" h="220px" rounded="24px" overflow="hidden" position="relative" className="slide-card" onClick={() => setSelectedProduct(product)}>
                         <img 
                           src={product.image} 
                           alt={product.name} 
                           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                          onError={(e) => { e.target.src = 'https://placehold.co/600x300?text=No+Image' }} 
+                          onError={(e) => { e.target.src = 'https://placehold.co/600x300/1e293b/f8fafc?text=No+Image' }} 
                         />
                         <div className='carousel-overlay'>
                           <span className="slide-brand">{product.brand}</span>
@@ -452,7 +385,7 @@ function App() {
                     </Carousel.Item>
                   ))}
                 </Carousel.ItemGroup>
-                <Carousel.Control justifyContent="center" gap="4" mt="3">
+                <Carousel.Control justifyContent="center" gap="4" mt="4">
                   <Carousel.PrevTrigger asChild>
                     <IconButton size="xs" variant="subtle" className="nav-trigger">
                       <LuChevronLeft />
@@ -480,28 +413,26 @@ function App() {
             <main className="products-grid">
               {filteredProducts.map((product) => {
                 const cartItem = cart.find(item => item.id === product.id);
-                
                 return (
                   <div key={product.id} className="product-card">
                     <div className="product-thumb" onClick={() => setSelectedProduct(product)}>
                       {product.brand && <span className="card-brand-label">{product.brand}</span>}
-                      <img src={product.image} alt={product.name} onError={(e) => { e.target.src = 'https://placehold.co/150x150?text=No+Image' }} />
-                      <div className="info-overlay"><Info size={14} /></div>
+                      <img src={product.image} alt={product.name} onError={(e) => { e.target.src = 'https://placehold.co/150x150/1e293b/f8fafc?text=No+Image' }} />
+                      <div className="info-overlay"><Info size={16} /></div>
                     </div>
                     <div className="product-main-details">
                       <h3 className="product-title" onClick={() => setSelectedProduct(product)}>{product.name}</h3>
                       <div className="product-footer">
                         <span className="product-price">{product.price.toLocaleString()} ₽</span>
-                        
                         {cartItem ? (
                           <div className="quantity-controls">
-                            <button onClick={() => removeFromCart(product.id)}><Minus size={12} /></button>
+                            <button onClick={() => removeFromCart(product.id)}><Minus size={14} /></button>
                             <span>{cartItem.quantity}</span>
-                            <button onClick={() => addToCart(product)}><Plus size={12} /></button>
+                            <button onClick={() => addToCart(product)}><Plus size={14} /></button>
                           </div>
                         ) : (
                           <button className="add-btn" onClick={() => addToCart(product)}>
-                            + Купить
+                            В корзину
                           </button>
                         )}
                       </div>
@@ -514,20 +445,13 @@ function App() {
         </>
       )}
 
-      {/* Полоска быстрой корзины внизу главного экрана (если в ней есть товары) */}
-      {cart.length > 0 && (
-        <div className="floating-cart-bar" onClick={() => setIsCartOpen(true)}>
-          <div className="floating-cart-info">
-            <ShoppingBag size={18} />
-            <span>В корзине {totalItemsCount} пары</span>
-          </div>
-          <div className="floating-cart-price">
-            {totalAmount.toLocaleString()} ₽
-          </div>
+      {cart.length > 0 && !isCheckoutMode && (
+        <div className="floating-cart-bar" onClick={() => { setIsCartOpen(false); setIsCheckoutMode(true); }}>
+          <span>🛒 Корзина ({totalItemsCount})</span>
+          <span>Оформить • {totalAmount.toLocaleString()} ₽</span>
         </div>
       )}
 
-      {/* ДЕТАЛЬНАЯ КАРТОЧКА ТОВАРА */}
       {selectedProduct && (() => {
         const modalCartItem = cart.find(item => item.id === selectedProduct.id);
         return (
@@ -539,7 +463,7 @@ function App() {
               </button>
               <div className="modal-content-scroll">
                 <div className="modal-image-container">
-                  <img src={selectedProduct.image} alt={selectedProduct.name} onError={(e) => { e.target.src = 'https://placehold.co/300x300?text=No+Image' }} />
+                  <img src={selectedProduct.image} alt={selectedProduct.name} onError={(e) => { e.target.src = 'https://placehold.co/300x300/1e293b/f8fafc?text=No+Image' }} />
                 </div>
                 <div className="modal-info">
                   {selectedProduct.brand && <span className="modal-brand-tag">{selectedProduct.brand}</span>}
@@ -556,13 +480,13 @@ function App() {
                 </div>
                 {modalCartItem ? (
                   <div className="quantity-controls big-controls">
-                    <button onClick={() => removeFromCart(selectedProduct.id)}><Minus size={14} /></button>
+                    <button onClick={() => removeFromCart(selectedProduct.id)}><Minus size={16} /></button>
                     <span>{modalCartItem.quantity}</span>
-                    <button onClick={() => addToCart(selectedProduct)}><Plus size={14} /></button>
+                    <button onClick={() => addToCart(selectedProduct)}><Plus size={16} /></button>
                   </div>
                 ) : (
                   <button className="modal-add-btn" onClick={() => addToCart(selectedProduct)}>
-                    В корзину
+                    Добавить в корзину
                   </button>
                 )}
               </div>
@@ -571,14 +495,13 @@ function App() {
         );
       })()}
 
-      {/* МОДАЛКА КОРЗИНЫ */}
       {isCartOpen && cart.length > 0 && (
         <div className="cart-modal-overlay" onClick={() => setIsCartOpen(false)}>
           <div className="cart-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-handle"></div>
             <div className="cart-modal-header">
               <h2>Выбранные товары</h2>
-              <button className="close-modal-btn" onClick={() => setIsCartOpen(false)}>
+              <button className="close-modal-btn" style={{position: 'static'}} onClick={() => setIsCartOpen(false)}>
                 <X size={20} />
               </button>
             </div>
@@ -586,51 +509,39 @@ function App() {
               {cart.map((item) => (
                 <div key={item.id} className="cart-item">
                   <div className="cart-item-img">
-                    <img src={item.image} alt={item.name} onError={(e) => { e.target.src = 'https://placehold.co/50x50?text=Err' }} />
+                    <img src={item.image} alt={item.name} onError={(e) => { e.target.src = 'https://placehold.co/50x50/1e293b/f8fafc?text=Err' }} />
                   </div>
                   <div className="cart-item-info">
                     <h4>{item.name}</h4>
                     <p>{(item.price * item.quantity).toLocaleString()} ₽</p>
                   </div>
                   <div className="quantity-controls">
-                    <button onClick={() => removeFromCart(item.id)}><Minus size={12} /></button>
+                    <button onClick={() => removeFromCart(item.id)}><Minus size={14} /></button>
                     <span>{item.quantity}</span>
-                    <button onClick={() => addToCart(item)}><Plus size={12} /></button>
+                    <button onClick={() => addToCart(item)}><Plus size={14} /></button>
                   </div>
                 </div>
               ))}
             </div>
-            
-            <div className="cart-modal-bottom-actions">
-              <div className="cart-total-summary">
-                <span>Итого:</span>
-                <h3>{totalAmount.toLocaleString()} ₽</h3>
-              </div>
-              <button 
-                className="go-to-checkout-btn"
-                onClick={() => {
-                  setIsCartOpen(false);
-                  setIsCheckoutStage(true);
-                }}
-              >
+            <div style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
+              <button className="confirm-order-btn" onClick={() => { setIsCartOpen(false); setIsCheckoutMode(true); }}>
                 Перейти к оформлению
               </button>
               <button className="clear-cart-btn-modal" onClick={clearCart}>
-                Очистить полностью
+                Очистить корзину
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ДОБАВЛЕНИЕ ТОВАРА АДМИНИСТРАТОРОМ */}
       {isAdminModalOpen && (
         <div className="modal-overlay" onClick={() => setIsAdminModalOpen(false)}>
           <div className="product-details-modal admin-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-handle"></div>
             <div className="cart-modal-header">
-              <h2>Панель управления товарами</h2>
-              <button className="close-modal-btn" onClick={() => setIsAdminModalOpen(false)}>
+              <h2>Управление товарами</h2>
+              <button className="close-modal-btn" style={{position: 'static'}} onClick={() => setIsAdminModalOpen(false)}>
                 <X size={20} />
               </button>
             </div>
@@ -665,6 +576,7 @@ function App() {
               <div className="input-box">
                 <label>Описание и размеры</label>
                 <textarea 
+                  rows="3"
                   value={newProduct.description} 
                   onChange={e => setNewProduct({...newProduct, description: e.target.value})} 
                 />
@@ -679,17 +591,18 @@ function App() {
                   />
                 </label>
                 {newProduct.image_file && (
-                  <span className="file-ready-tag"><Check size={14} /> {newProduct.image_file.name}</span>
+                  <span className="file-ready-tag"><Check size={16} /> {newProduct.image_file.name}</span>
                 )}
               </div>
-              <button type="submit" className="modal-add-btn w-full">
-                Добавить в PostgreSQL
+              <button type="submit" className="confirm-order-btn w-full" style={{marginTop: '8px'}}>
+                Добавить в базу
               </button>
             </form>
           </div>
         </div>
       )}
     </div>
+    </>
   );
 }
 

@@ -145,10 +145,10 @@ async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     print("🗄️ Таблицы PostgreSQL проверены/созданы.")
-    polling_task = asyncio.create_task(dp.start_polling(bot))
+    # polling_task = asyncio.create_task(dp.start_polling(bot))
     yield
-    polling_task.cancel()
-    await bot.session.close()
+    # polling_task.cancel()
+    # await bot.session.close()
 
 app = FastAPI(lifespan=lifespan)
 
