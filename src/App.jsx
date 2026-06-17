@@ -5,7 +5,7 @@ import './App.css';
 import { Carousel, IconButton, Box } from "@chakra-ui/react";
 import { LuChevronLeft, LuChevronRight } from "react-icons/lu";
 
-const API_BASE_URL = 'https://zolikstore.loca.lt';
+const API_BASE_URL = 'https://zolikstore.vercel.app/';
 const ADMIN_TELEGRAM_ID = 1160765121;
 
 function App() {
