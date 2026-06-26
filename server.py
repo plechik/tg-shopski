@@ -1,8 +1,9 @@
 import asyncio
 import os
+import logging
 from dotenv import load_dotenv
 from pathlib import Path
-import boto3  # Используем стандартный стабильный boto3
+import boto3
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends, HTTPException, Form, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
@@ -13,7 +14,6 @@ import uvicorn
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import CommandStart
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from aiogram.client.session.aiohttp import AiohttpSession
 
 # SQLAlchemy
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
@@ -21,8 +21,12 @@ from sqlalchemy.orm import declarative_base, sessionmaker, relationship, selecti
 from sqlalchemy import Column, Integer, String, Numeric, Boolean, ForeignKey
 from sqlalchemy.future import select
 
+# Настройка логирования для отслеживания состояния бота в консоли
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+
 BASE_DIR = Path(__file__).resolve().parent
 load_dotenv(dotenv_path=BASE_DIR / "variables.env")
+
 # ================= CONFIGURATION =================
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 DATABASE_URL = os.environ.get("DATABASE_URL")
@@ -32,7 +36,6 @@ B2_KEY_ID = os.environ.get("B2_KEY_ID")
 B2_APPLICATION_KEY = os.environ.get("B2_APPLICATION_KEY")
 B2_BUCKET_NAME = os.environ.get("B2_BUCKET_NAME")
 MINI_APP_URL = "https://zolikstore.vercel.app/"
-PROXY_URL = 'http://127.0.0.1:12334'
 
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+asyncpg://", 1)
@@ -41,25 +44,15 @@ if DATABASE_URL and "sslmode=" in DATABASE_URL:
     DATABASE_URL = DATABASE_URL.replace("sslmode=", "ssl=")
 # =================================================
 
-IS_RENDER = os.environ.get("PORT") is not None
-
-if IS_RENDER:
-    bot = Bot(token=BOT_TOKEN)
-else:
-    session = AiohttpSession(proxy=PROXY_URL)
-    bot = Bot(token=BOT_TOKEN, session=session)
-
+# Инициализируем бота напрямую без прокси-серверов
+bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
 # ================= DATABASE SETUP =================
-engine = create_async_engine(
-    DATABASE_URL,
-    echo=True
-)
+engine = create_async_engine(DATABASE_URL, echo=False)
 async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 Base = declarative_base()
 
-# Зависимость для БД
 async def get_db():
     async with async_session() as session:
         yield session
@@ -86,7 +79,7 @@ class ProductImage(Base):
 class Item(BaseModel):
     id: int
     name: str
-    brand: str  # Добавили бренд, чтобы выводить его в информации о заказе
+    brand: str  
     price: int
     image: str
     quantity: int = 1
@@ -101,8 +94,8 @@ class CustomerDetails(BaseModel):
 class Order(BaseModel):
     items: List[Item]
     total: int
-    customer_details: CustomerDetails  # Принимаем новые данные формы оформления
-
+    customer_details: CustomerDetails  
+print("hello world")
 class ImageCreate(BaseModel):
     image_url: str
     is_main: bool = False
@@ -142,13 +135,24 @@ async def upload_file_to_b2(file: UploadFile) -> str:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # 1. Инициализация Базы Данных
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    print("🗄️ Таблицы PostgreSQL проверены/созданы.")
-    # polling_task = asyncio.create_task(dp.start_polling(bot))
+    logging.info("🗄️ Таблицы PostgreSQL проверены/созданы.")
+    
+    # 2. Сброс старых вебхуков (важно, чтобы Polling перехватывал сообщения без ошибок)
+    await bot.delete_webhook(drop_pending_updates=True)
+    
+    # 3. Раскомментировано: запуск долгого поллинга бота в фоновой задаче
+    polling_task = asyncio.create_task(dp.start_polling(bot))
+    logging.info("🤖 Бот успешно запущен в режиме Polling и слушает команды.")
+    
     yield
-    # polling_task.cancel()
-    # await bot.session.close()
+    
+    # 4. Раскомментировано: корректное завершение работы
+    logging.info("Выключение приложения и остановка бота...")
+    polling_task.cancel()
+    await bot.session.close()
 
 app = FastAPI(lifespan=lifespan)
 
@@ -169,7 +173,6 @@ async def get_catalog(db: AsyncSession = Depends(get_db)):
     return products
 
 
-# ЭНДПОИНТ: Создание товара С ЗАГРУЗКОЙ ФАЙЛА В BACKBLAZE
 @app.post("/api/products")
 async def create_product(
     name: str = Form(...),
@@ -179,40 +182,23 @@ async def create_product(
     image_file: Optional[UploadFile] = File(None),
     db: AsyncSession = Depends(get_db)
 ):
-    new_product = Product(
-        name=name,
-        brand=brand,
-        price=price,
-        description=description
-    )
+    new_product = Product(name=name, brand=brand, price=price, description=description)
     db.add(new_product)
     await db.commit()
 
     if image_file:
         try:
             b2_image_url = await upload_file_to_b2(image_file)
-            new_image = ProductImage(
-                product_id=new_product.id,
-                image_url=b2_image_url,
-                is_main=True
-            )
+            new_image = ProductImage(product_id=new_product.id, image_url=b2_image_url, is_main=True)
             db.add(new_image)
             await db.commit()
-            
-            await db.execute(
-                select(Product)
-                .where(Product.id == new_product.id)
-                .options(selectinload(Product.images))
-            )
-            
         except Exception as e:
-            print(f"Ошибка при загрузке картинки в Backblaze B2: {e}")
+            logging.error(f"Ошибка при загрузке картинки в Backblaze B2: {e}")
             return {"status": "partial_success", "product_id": new_product.id, "warning": "Товар создан, но картинка не загрузилась"}
 
     return {"status": "success", "product_id": new_product.id}
 
 
-# ЭНДПОИНТ: Ручное добавление текстовой ссылки на картинку
 @app.post("/api/products/{product_id}/images")
 async def add_product_image(product_id: int, image_data: ImageCreate, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Product).where(Product.id == product_id))
@@ -221,38 +207,25 @@ async def add_product_image(product_id: int, image_data: ImageCreate, db: AsyncS
     if not product:
         raise HTTPException(status_code=404, detail="Товар не найден")
         
-    new_image = ProductImage(
-        product_id=product_id,
-        image_url=image_data.image_url,
-        is_main=image_data.is_main
-    )
+    new_image = ProductImage(product_id=product_id, image_url=image_data.image_url, is_main=image_data.is_main)
     db.add(new_image)
     await db.commit()
     return {"status": "success", "message": "Картинка успешно добавлена"}
 
 
-# ОБНОВЛЕННЫЙ ЭНДПОИНТ: Прием заказов со страницы оформления
 @app.post("/api/orders")
 async def create_order(order: Order):
     details = order.customer_details
     
-    # 1. Формируем красивый текстовый список товаров для логов и Telegram
     items_text = "\n".join([
         f"• {item.brand} {item.name} — *{item.quantity} шт.* x {item.price:,} руб." 
         for item in order.items
     ])
     
-    # Логирование на сервере
-    print("\n--- 🛒 ПОЛУЧЕН НОВЫЙ ЗАКАЗ ИЗ MINI APP! ---")
-    print(f"Покупатель: {details.fullName} ({details.phone})")
-    print(f"Доставка: {details.deliveryMethod} | Адрес: {details.address}")
-    print(f"Товары:\n{items_text}")
-    print(f"Общая сумма: {order.total} руб.\n")
+    logging.info(f"🛒 Получен заказ от {details.fullName} на сумму {order.total} руб.")
     
-    # 2. Формируем подробный тип доставки
     delivery_type = "🚀 СДЭК / Почта России" if details.deliveryMethod == "cdek" else "🏠 Самовывоз из шоурума"
     
-    # 3. Собираем итоговое Markdown-сообщение для менеджера
     telegram_message = (
         f"🛍️ **ПОЛУЧЕН НОВЫЙ ЗАКАЗ!**\n\n"
         f"👤 **Покупатель:** {details.fullName}\n"
@@ -272,16 +245,13 @@ async def create_order(order: Order):
     )
     
     try:
-        # Отправляем сообщение администратору
         await bot.send_message(
             chat_id=1160765121,
             text=telegram_message,
             parse_mode="Markdown"
         )
     except Exception as e:
-        print(f"Ошибка отправки сообщения в Telegram: {e}")
-        # Не бросаем HTTPException, чтобы фронтенд увидел успешное оформление, 
-        # даже если упало уведомление бота (хотя логирование ошибки обязательно)
+        logging.error(f"Ошибка отправки сообщения в Telegram: {e}")
     
     return {"status": "success"}
 
@@ -306,7 +276,8 @@ async def cmd_start(message: types.Message):
     )
 
 if __name__ == "__main__":
-    # Берем порт из переменной окружения Render, если ее нет — ставим 8000
     port = int(os.environ.get("PORT", 8000))
-    # Хост обязательно 0.0.0.0 для сервера
-    uvicorn.run("server:app", host="0.0.0.0", port=port)
+    # Изменено: Передаем сам объект 'app' вместо строки "server:app".
+    # Теперь скрипт запустится корректно, даже если файл называется не server.py
+    uvicorn.run(app, host="0.0.0.0", port=port)
+    
