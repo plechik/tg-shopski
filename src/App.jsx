@@ -18,7 +18,7 @@ function App() {
   
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedBrand, setSelectedBrand] = useState('Все');
+  const [selectedBrand, setSelectedBrand] = useState('All');
   
   const [isAdmin, setIsAdmin] = useState(false);
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
@@ -27,7 +27,7 @@ function App() {
   const [customerDetails, setCustomerDetails] = useState({
     fullName: '',
     phone: '',
-    deliveryMethod: 'cdek',
+    deliveryMethod: 'standard',
     address: '',
     comment: ''
   });
@@ -49,7 +49,7 @@ function App() {
         }
       }
     } catch (error) {
-      console.error('Ошибка инициализации Telegram Mini App:', error);
+      console.error('Telegram Mini App initialization error:', error);
     }
 
     fetchCatalog();
@@ -76,7 +76,7 @@ function App() {
         setProducts(formattedProducts);
       }
     } catch (error) {
-      console.error('Ошибка загрузки каталога:', error);
+      console.error('Catalog loading error:', error);
     } finally {
       setIsLoading(false);
     }
@@ -121,8 +121,8 @@ function App() {
     e.preventDefault();
     if (cart.length === 0) return;
 
-    if (customerDetails.deliveryMethod === 'cdek' && !customerDetails.address.trim()) {
-      alert('Пожалуйста, укажите адрес доставки для СДЭК');
+    if (customerDetails.deliveryMethod === 'standard' && !customerDetails.address.trim()) {
+      alert('Please enter a shipping address');
       return;
     }
 
@@ -142,10 +142,10 @@ function App() {
         setIsSuccess(true);
         setIsCheckoutMode(false);
       } else {
-        alert('Ошибка при отправке заказа: ' + response.status);
+        alert('Error placing order: ' + response.status);
       }
     } catch (error) {
-      alert('Ошибка соединения с сервером: ' + error.message);
+      alert('Connection error: ' + error.message);
     }
   };
 
@@ -170,22 +170,22 @@ function App() {
       });
 
       if (response.ok) {
-        alert('Товар успешно создан!');
+        alert('Product created successfully!');
         setIsAdminModalOpen(false);
         setNewProduct({ name: '', brand: '', price: '', description: '', image_file: null });
         fetchCatalog();
       } else {
-        alert('Ошибка при создании товара на бэкенде');
+        alert('Error creating product');
       }
     } catch (error) {
-      alert('Ошибка соединения с сервером: ' + error.message);
+      alert('Connection error: ' + error.message);
     }
   };
 
-  const uniqueBrands = ['Все', ...new Set(products.map(p => p.brand).filter(Boolean))];
+  const uniqueBrands = ['All', ...new Set(products.map(p => p.brand).filter(Boolean))];
 
   const filteredProducts = products.filter(product => {
-    const matchesBrand = selectedBrand === 'Все' || product.brand === selectedBrand;
+    const matchesBrand = selectedBrand === 'All' || product.brand === selectedBrand;
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           (product.brand && product.brand.toLowerCase().includes(searchQuery.toLowerCase()));
     return matchesBrand && matchesSearch;
@@ -198,12 +198,12 @@ function App() {
           <div className="success-icon-animated">
             <Check size={40} />
           </div>
-          <h2>Заказ принят!</h2>
+          <h2>Order Confirmed!</h2>
           <p className="modal-description" style={{marginBottom: '24px'}}>
-            Менеджер уже обрабатывает твою заявку и свяжется в Telegram в ближайшее время.
+            Our team is processing your order and will reach out to you on Telegram shortly.
           </p>
           <button className="confirm-order-btn" onClick={() => setIsSuccess(false)}>
-            Вернуться в каталог
+            Back to Catalog
           </button>
         </div>
       </div>
@@ -217,18 +217,18 @@ function App() {
           <button className="nav-trigger close-modal-btn" style={{position: 'static'}} onClick={() => setIsCheckoutMode(false)}>
             <ArrowLeft size={20} />
           </button>
-          <h3>Оформление заказа</h3>
+          <h3>Checkout</h3>
           <div style={{width: '36px'}}></div>
         </header>
 
         <div className="checkout-scroll-content">
           <form onSubmit={handleConfirmOrder}>
             <div className="checkout-section">
-              <div className="section-title">Контакты</div>
+              <div className="section-title">Contact Information</div>
               <div className="checkout-input-field">
                 <input 
                   type="text" 
-                  placeholder="ФИО получателя" 
+                  placeholder="Full Name" 
                   value={customerDetails.fullName}
                   onChange={e => setCustomerDetails({...customerDetails, fullName: e.target.value})}
                   required 
@@ -237,7 +237,7 @@ function App() {
               <div className="checkout-input-field">
                 <input 
                   type="tel" 
-                  placeholder="Номер телефона" 
+                  placeholder="Phone Number" 
                   value={customerDetails.phone}
                   onChange={e => setCustomerDetails({...customerDetails, phone: e.target.value})}
                   required 
@@ -246,40 +246,40 @@ function App() {
             </div>
 
             <div className="checkout-section">
-              <div className="section-title">Способ доставки</div>
+              <div className="section-title">Shipping Method</div>
               <div className="delivery-selector">
                 <div 
-                  className={`delivery-option ${customerDetails.deliveryMethod === 'cdek' ? 'active' : ''}`}
-                  onClick={() => setCustomerDetails({...customerDetails, deliveryMethod: 'cdek'})}
+                  className={`delivery-option ${customerDetails.deliveryMethod === 'standard' ? 'active' : ''}`}
+                  onClick={() => setCustomerDetails({...customerDetails, deliveryMethod: 'standard'})}
                 >
                   <div className="radio-dot"></div>
                   <div className="option-info">
-                    <h4>СДЭК / Почта России</h4>
-                    <p>Доставка в любой регион до пункта выдачи или двери</p>
+                    <h4>Standard Shipping</h4>
+                    <p>USPS / FedEx — delivered to your door</p>
                   </div>
                 </div>
 
                 <div 
-                  className={`delivery-option ${customerDetails.deliveryMethod === 'pickup' ? 'active' : ''}`}
-                  onClick={() => setCustomerDetails({...customerDetails, deliveryMethod: 'pickup', address: 'Шоурум ZolikStore'})}
+                  className={`delivery-option ${customerDetails.deliveryMethod === 'express' ? 'active' : ''}`}
+                  onClick={() => setCustomerDetails({...customerDetails, deliveryMethod: 'express'})}
                 >
                   <div className="radio-dot"></div>
                   <div className="option-info">
-                    <h4>Самовывоз</h4>
-                    <p>Бесплатно из нашего шоурума</p>
+                    <h4>Express Shipping (2-Day)</h4>
+                    <p>Priority delivery within 2 business days</p>
                   </div>
                 </div>
               </div>
             </div>
 
-            {customerDetails.deliveryMethod === 'cdek' && (
+            {customerDetails.deliveryMethod === 'standard' && (
               <div className="checkout-section">
-                <div className="section-title">Адрес доставки</div>
+                <div className="section-title">Shipping Address</div>
                 <div className="checkout-input-field">
                   <input 
                     type="text" 
-                    placeholder="Город, улица, дом, кв/офис" 
-                    value={customerDetails.address === 'Шоурум ZolikStore' ? '' : customerDetails.address}
+                    placeholder="Street, City, State, ZIP Code" 
+                    value={customerDetails.address}
                     onChange={e => setCustomerDetails({...customerDetails, address: e.target.value})}
                     required
                   />
@@ -288,11 +288,11 @@ function App() {
             )}
 
             <div className="checkout-section">
-              <div className="section-title">Комментарий (необязательно)</div>
+              <div className="section-title">Notes (optional)</div>
               <textarea 
                 className="checkout-textarea" 
                 rows="3" 
-                placeholder="Укажите нужный размер обуви или важные примечания..."
+                placeholder="Specify your shoe size or any important notes..."
                 value={customerDetails.comment}
                 onChange={e => setCustomerDetails({...customerDetails, comment: e.target.value})}
               />
@@ -300,7 +300,7 @@ function App() {
 
             <div className="checkout-sticky-bottom">
               <button type="submit" className="confirm-order-btn">
-                Подтвердить заказ • {totalAmount.toLocaleString()} ₽
+                Confirm Order • ${totalAmount.toLocaleString()}
               </button>
             </div>
           </form>
@@ -317,7 +317,7 @@ function App() {
         </div>
         <div className="header-actions">
           {isAdmin && (
-            <button className="admin-open-btn" onClick={() => setIsAdminModalOpen(true)} title="Добавить товар">
+            <button className="admin-open-btn" onClick={() => setIsAdminModalOpen(true)} title="Add Product">
               <PackagePlus size={20} />
             </button>
           )}
@@ -336,7 +336,7 @@ function App() {
         <Search size={18} className="search-icon" />
         <input 
           type="text" 
-          placeholder="Поиск кроссовок или бренда..." 
+          placeholder="Search sneakers or brands..." 
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
@@ -358,13 +358,13 @@ function App() {
       {isLoading ? (
         <div className="loading-spinner">
           <div className="spinner"></div>
-          <p>Загрузка свежих дропов...</p>
+          <p>Loading fresh drops...</p>
         </div>
       ) : (
         <>
-          {products.length > 0 && selectedBrand === 'Все' && !searchQuery && (
+          {products.length > 0 && selectedBrand === 'All' && !searchQuery && (
             <div className="carousel-container">
-              <h2 className="block-title">Новинки</h2>
+              <h2 className="block-title">New Arrivals</h2>
               <Carousel.Root slideCount={products.slice(0, 5).length} maxW="xl" mx="auto" allowMouseDrag>
                 <Carousel.ItemGroup>
                   {products.slice(0, 8).map((product, index) => (
@@ -379,7 +379,7 @@ function App() {
                         <div className='carousel-overlay'>
                           <span className="slide-brand">{product.brand}</span>
                           <div className='carousel-product-name'>{product.name}</div>
-                          <div className='carousel-product-price'>{product.price.toLocaleString()} ₽</div>
+                          <div className='carousel-product-price'>${product.price.toLocaleString()}</div>
                         </div>
                       </Box>
                     </Carousel.Item>
@@ -403,12 +403,12 @@ function App() {
           )}
           
           <h2 className="block-title mt-4">
-            {selectedBrand === 'Все' ? 'Все доступные пары' : `Модели ${selectedBrand}`}
+            {selectedBrand === 'All' ? 'All Available Pairs' : `${selectedBrand} Models`}
             <span className="items-count-badge">{filteredProducts.length}</span>
           </h2>
 
           {filteredProducts.length === 0 ? (
-            <div className="empty-state">Ничего не найдено. Попробуйте изменить запрос...</div>
+            <div className="empty-state">Nothing found. Try a different search...</div>
           ) : (
             <main className="products-grid">
               {filteredProducts.map((product) => {
@@ -423,7 +423,7 @@ function App() {
                     <div className="product-main-details">
                       <h3 className="product-title" onClick={() => setSelectedProduct(product)}>{product.name}</h3>
                       <div className="product-footer">
-                        <span className="product-price">{product.price.toLocaleString()} ₽</span>
+                        <span className="product-price">${product.price.toLocaleString()}</span>
                         {cartItem ? (
                           <div className="quantity-controls">
                             <button onClick={() => removeFromCart(product.id)}><Minus size={14} /></button>
@@ -432,7 +432,7 @@ function App() {
                           </div>
                         ) : (
                           <button className="add-btn" onClick={() => addToCart(product)}>
-                            В корзину
+                            Add to Cart
                           </button>
                         )}
                       </div>
@@ -447,8 +447,8 @@ function App() {
 
       {cart.length > 0 && !isCheckoutMode && (
         <div className="floating-cart-bar" onClick={() => { setIsCartOpen(false); setIsCheckoutMode(true); }}>
-          <span>🛒 Корзина ({totalItemsCount})</span>
-          <span>Оформить • {totalAmount.toLocaleString()} ₽</span>
+          <span>🛒 Cart ({totalItemsCount})</span>
+          <span>Checkout • ${totalAmount.toLocaleString()}</span>
         </div>
       )}
 
@@ -468,15 +468,15 @@ function App() {
                 <div className="modal-info">
                   {selectedProduct.brand && <span className="modal-brand-tag">{selectedProduct.brand}</span>}
                   <h2>{selectedProduct.name}</h2>
-                  <div className="status-badge">В наличии</div>
-                  <p className="description-header">Описание модели</p>
-                  <p className="modal-description">{selectedProduct.description || "Описание для данной пары обуви дополняется."}</p>
+                  <div className="status-badge">In Stock</div>
+                  <p className="description-header">Product Description</p>
+                  <p className="modal-description">{selectedProduct.description || "Product description coming soon."}</p>
                 </div>
               </div>
               <div className="modal-footer">
                 <div className="modal-price-pane">
-                  <span className="price-sub">Стоимость</span>
-                  <span className="modal-price">{selectedProduct.price.toLocaleString()} ₽</span>
+                  <span className="price-sub">Price</span>
+                  <span className="modal-price">${selectedProduct.price.toLocaleString()}</span>
                 </div>
                 {modalCartItem ? (
                   <div className="quantity-controls big-controls">
@@ -486,7 +486,7 @@ function App() {
                   </div>
                 ) : (
                   <button className="modal-add-btn" onClick={() => addToCart(selectedProduct)}>
-                    Добавить в корзину
+                    Add to Cart
                   </button>
                 )}
               </div>
@@ -500,7 +500,7 @@ function App() {
           <div className="cart-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-handle"></div>
             <div className="cart-modal-header">
-              <h2>Выбранные товары</h2>
+              <h2>Your Cart</h2>
               <button className="close-modal-btn" style={{position: 'static'}} onClick={() => setIsCartOpen(false)}>
                 <X size={20} />
               </button>
@@ -513,7 +513,7 @@ function App() {
                   </div>
                   <div className="cart-item-info">
                     <h4>{item.name}</h4>
-                    <p>{(item.price * item.quantity).toLocaleString()} ₽</p>
+                    <p>${(item.price * item.quantity).toLocaleString()}</p>
                   </div>
                   <div className="quantity-controls">
                     <button onClick={() => removeFromCart(item.id)}><Minus size={14} /></button>
@@ -525,10 +525,10 @@ function App() {
             </div>
             <div style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
               <button className="confirm-order-btn" onClick={() => { setIsCartOpen(false); setIsCheckoutMode(true); }}>
-                Перейти к оформлению
+                Proceed to Checkout
               </button>
               <button className="clear-cart-btn-modal" onClick={clearCart}>
-                Очистить корзину
+                Clear Cart
               </button>
             </div>
           </div>
@@ -540,14 +540,14 @@ function App() {
           <div className="product-details-modal admin-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-handle"></div>
             <div className="cart-modal-header">
-              <h2>Управление товарами</h2>
+              <h2>Product Management</h2>
               <button className="close-modal-btn" style={{position: 'static'}} onClick={() => setIsAdminModalOpen(false)}>
                 <X size={20} />
               </button>
             </div>
             <form onSubmit={handleAddProductSubmit} className="admin-form">
               <div className="input-box">
-                <label>Название кроссовок</label>
+                <label>Sneaker Name</label>
                 <input 
                   type="text" 
                   value={newProduct.name} 
@@ -556,7 +556,7 @@ function App() {
                 />
               </div>
               <div className="input-box">
-                <label>Бренд производителя</label>
+                <label>Brand</label>
                 <input 
                   type="text"
                   value={newProduct.brand} 
@@ -565,7 +565,7 @@ function App() {
                 />
               </div>
               <div className="input-box">
-                <label>Цена продажи (₽)</label>
+                <label>Price (USD)</label>
                 <input 
                   type="number" 
                   value={newProduct.price} 
@@ -574,7 +574,7 @@ function App() {
                 />
               </div>
               <div className="input-box">
-                <label>Описание и размеры</label>
+                <label>Description & Sizes</label>
                 <textarea 
                   rows="3"
                   value={newProduct.description} 
@@ -583,7 +583,7 @@ function App() {
               </div>
               <div className="input-box">
                 <label className="file-uploader">
-                  <span>Загрузить фото пары</span>
+                  <span>Upload Product Photo</span>
                   <input 
                     type="file" 
                     accept="image/*"
@@ -595,7 +595,7 @@ function App() {
                 )}
               </div>
               <button type="submit" className="confirm-order-btn w-full" style={{marginTop: '8px'}}>
-                Добавить в базу
+                Add to Catalog
               </button>
             </form>
           </div>

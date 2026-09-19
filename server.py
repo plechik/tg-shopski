@@ -217,31 +217,40 @@ async def add_product_image(product_id: int, image_data: ImageCreate, db: AsyncS
 async def create_order(order: Order):
     details = order.customer_details
     
+
+    # 1. Format item list for logs and Telegram
     items_text = "\n".join([
-        f"• {item.brand} {item.name} — *{item.quantity} шт.* x {item.price:,} руб." 
+        f"• {item.brand} {item.name} — *{item.quantity} pcs.* x ${item.price:,}" 
         for item in order.items
     ])
     
-    logging.info(f"🛒 Получен заказ от {details.fullName} на сумму {order.total} руб.")
+    # Server logging
+    print("\n--- 🛒 NEW ORDER RECEIVED FROM MINI APP! ---")
+    print(f"Customer: {details.fullName} ({details.phone})")
+    print(f"Shipping: {details.deliveryMethod} | Address: {details.address}")
+    print(f"Items:\n{items_text}")
+    print(f"Total: ${order.total:,}\n")
     
-    delivery_type = "🚀 СДЭК / Почта России" if details.deliveryMethod == "cdek" else "🏠 Самовывоз из шоурума"
+    # 2. Determine shipping type
+    delivery_type = "🚀 Standard Shipping (USPS/FedEx)" if details.deliveryMethod == "standard" else "⚡ Express Shipping (2-Day)"
     
+    # 3. Build Markdown message for admin
     telegram_message = (
-        f"🛍️ **ПОЛУЧЕН НОВЫЙ ЗАКАЗ!**\n\n"
-        f"👤 **Покупатель:** {details.fullName}\n"
-        f"📞 **Телефон:** `{details.phone}`\n\n"
-        f"📦 **Способ доставки:** {delivery_type}\n"
+        f"🛍️ **NEW ORDER RECEIVED!**\n\n"
+        f"👤 **Customer:** {details.fullName}\n"
+        f"📞 **Phone:** `{details.phone}`\n\n"
+        f"📦 **Shipping Method:** {delivery_type}\n"
     )
     
-    if details.deliveryMethod == "cdek" and details.address:
-        telegram_message += f"📍 **Адрес доставки:** {details.address}\n"
+    if details.address:
+        telegram_message += f"📍 **Shipping Address:** {details.address}\n"
         
     if details.comment:
-        telegram_message += f"💬 **Комментарий:** _{details.comment}_\n"
+        telegram_message += f"💬 **Notes:** _{details.comment}_\n"
         
     telegram_message += (
-        f"\n👟 **Состав заказа:**\n{items_text}\n\n"
-        f"💰 **ИТОГО К ОПЛАТЕ:** **{order.total:,} руб.**"
+        f"\n👟 **Order Items:**\n{items_text}\n\n"
+        f"💰 **ORDER TOTAL:** **${order.total:,}**"
     )
     
     try:
@@ -262,15 +271,15 @@ async def cmd_start(message: types.Message):
     builder = InlineKeyboardBuilder()
     builder.row(
         types.InlineKeyboardButton(
-            text="🛍️ Открыть магазин", 
+            text="🛍️ Open Store", 
             web_app=types.WebAppInfo(url=MINI_APP_URL)
         )
     )
     
     await message.answer(
-        f"Привет, {message.from_user.first_name}!\n\n"
-        "Добро пожаловать в **ZolikStore** — самый технологичный магазин одежды.\n"
-        "Нажми на кнопку ниже, чтобы открыть каталог товаров 👇",
+        f"Hey, {message.from_user.first_name}!\n\n"
+        "Welcome to **ZolikStore** — your premium sneaker destination.\n"
+        "Tap the button below to browse our catalog 👇",
         reply_markup=builder.as_markup(),
         parse_mode="Markdown"
     )

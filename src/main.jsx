@@ -10,7 +10,7 @@ import { Provider } from "./components/ui/provider"
 try {
   init({ acceptCustomStyles: true });
 } catch (e) {
-  console.log("Приложение запущенно вне Telegram (в обычном браузере)");
+  console.log("App running outside Telegram (in a regular browser)");
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(

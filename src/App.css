@@ -1,7 +1,9 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
 :root {
   /* Тёмная современная палитра */
   --bg-main: #0f172a;
-  --bg-card: rgba(30, 41, 59, 0.6);
+  --bg-card: rgba(30, 41, 59, 0.7);
   --text-main: #f8fafc;
   --text-alt: #94a3b8;
   --accent: #3b82f6;
@@ -16,12 +18,14 @@
   --radius-lg: 24px;
   --blur-md: blur(12px);
   --blur-lg: blur(20px);
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 body {
   background-color: var(--bg-main);
   color: var(--text-main);
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', Roboto, sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
   margin: 0;
   padding: 0;
   -webkit-font-smoothing: antialiased;
@@ -29,7 +33,7 @@ body {
 }
 
 .shop-container {
-  max-width: 540px;
+  max-width: 560px;
   margin: 0 auto;
   padding: 16px;
   padding-bottom: 110px;
@@ -38,7 +42,7 @@ body {
 
 /* --- ШАПКА МАГАЗИНА --- */
 .shop-header {
-  max-width: 540px;
+  max-width: 560px;
   margin: 0 auto;
   display: flex;
   justify-content: space-between;
@@ -49,7 +53,8 @@ body {
   z-index: 50;
   background: rgba(15, 23, 42, 0.8);
   backdrop-filter: var(--blur-md);
-  padding: 12px 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   margin-top: -16px;
   padding-top: 16px;
 }
@@ -58,6 +63,7 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
+  cursor: pointer;
 }
 
 .shop-header h1 {
@@ -91,7 +97,7 @@ body {
   border: var(--glass-border);
   box-shadow: var(--shadow-sm);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all var(--transition-fast);
 }
 
 .cart-badge:hover, .admin-open-btn:hover {
@@ -124,15 +130,17 @@ body {
   background: var(--bg-card);
   backdrop-filter: var(--blur-md);
   border: var(--glass-border);
-  border-radius: var(--radius-md);
+  border-radius: 20px;
   padding: 12px 16px;
   margin-bottom: 20px;
   box-shadow: var(--shadow-sm);
-  transition: border-color 0.2s ease;
+  transition: all var(--transition-normal);
+  cursor: text;
 }
 
 .search-bar:focus-within {
   border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 .search-icon {
@@ -156,7 +164,7 @@ body {
 .clear-search {
   color: var(--text-alt);
   cursor: pointer;
-  transition: color 0.2s;
+  transition: color var(--transition-fast);
 }
 
 .clear-search:hover {
@@ -188,7 +196,12 @@ body {
   font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all var(--transition-fast);
+}
+
+.brand-pill:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-main);
 }
 
 .brand-pill.active {
@@ -199,7 +212,7 @@ body {
 
 /* --- ЗАГОЛОВКИ БЛОКОВ --- */
 .block-title {
-  font-size: 18px;
+  font-size: 19px;
   font-weight: 700;
   margin: 0 0 16px 0;
   display: flex;
@@ -270,7 +283,8 @@ body {
   border: var(--glass-border) !important;
   color: var(--text-main) !important;
   border-radius: 50% !important;
-  transition: all 0.2s ease !important;
+  transition: all var(--transition-fast) !important;
+  cursor: pointer;
 }
 
 .nav-trigger:hover {
@@ -289,22 +303,43 @@ body {
   backdrop-filter: var(--blur-md);
   border: var(--glass-border);
   border-radius: var(--radius-lg);
-  padding: 10px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
   box-shadow: var(--shadow-sm);
+  transition: transform var(--transition-normal), box-shadow var(--transition-normal);
+  position: relative;
+  cursor: pointer;
+}
+
+.product-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+.product-card::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  border-radius: inherit;
+  border: 1px solid rgba(59, 130, 246, 0);
+  transition: border-color var(--transition-normal);
+  pointer-events: none;
+}
+
+.product-card:hover::after {
+  border-color: rgba(59, 130, 246, 0.3);
 }
 
 .product-thumb {
   position: relative;
   background: rgba(0, 0, 0, 0.2);
-  height: 150px;
+  height: 160px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: var(--radius-md);
   overflow: hidden;
-  cursor: pointer;
 }
 
 .product-thumb img {
@@ -341,7 +376,7 @@ body {
   border-radius: 50%;
   display: flex;
   border: var(--glass-border);
-  transition: background 0.2s;
+  transition: background var(--transition-fast);
 }
 
 .product-card:hover .info-overlay {
@@ -357,17 +392,17 @@ body {
 }
 
 .product-title {
-  font-size: 14px;
+  font-size: 14.5px;
   margin: 0 0 10px 0;
   font-weight: 600;
   color: var(--text-main);
   min-height: 40px;
   line-height: 1.4;
+  letter-spacing: -0.01em;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  cursor: pointer;
 }
 
 .product-footer {
@@ -381,6 +416,7 @@ body {
   font-weight: 700;
   color: var(--text-main);
   font-size: 16px;
+  letter-spacing: -0.02em;
 }
 
 .add-btn {
@@ -392,8 +428,15 @@ body {
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all var(--transition-fast);
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  position: relative;
+  z-index: 2;
+}
+
+.add-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
 }
 
 /* --- РЕГУЛИРОВКА КОЛИЧЕСТВА (+ / -) --- */
@@ -415,7 +458,7 @@ body {
   padding: 4px;
   display: flex;
   color: var(--text-main);
-  transition: background 0.2s;
+  transition: background var(--transition-fast);
 }
 
 .quantity-controls button:hover {
@@ -437,7 +480,7 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(0, 0, 0, 0.7);
   backdrop-filter: var(--blur-sm);
   display: flex;
   align-items: flex-end;
@@ -451,7 +494,7 @@ body {
   border-top: 1px solid rgba(255, 255, 255, 0.15);
   width: 100%;
   border-radius: 32px 32px 0 0;
-  padding: 20px 24px 32px;
+  padding: 24px 24px 36px;
   max-height: 88vh;
   box-shadow: var(--shadow-lg);
   box-sizing: border-box;
@@ -488,7 +531,7 @@ body {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background var(--transition-fast);
 }
 
 .close-modal-btn:hover {
@@ -503,7 +546,7 @@ body {
 
 .modal-image-container {
   width: 100%;
-  height: 280px;
+  height: 300px;
   border-radius: var(--radius-lg);
   background: rgba(0, 0, 0, 0.2);
   display: flex;
@@ -586,7 +629,7 @@ body {
   font-weight: 600;
   cursor: pointer;
   box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
-  transition: all 0.2s ease;
+  transition: all var(--transition-fast);
 }
 
 .modal-add-btn:hover {
@@ -601,11 +644,22 @@ body {
 .cart-modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
 .cart-modal-header h2 { margin: 0; font-size: 20px; font-weight: 700; color: var(--text-main); }
 .cart-items-list { overflow-y: auto; max-height: 50vh; margin-bottom: 20px; scrollbar-width: none; }
-.cart-item { display: flex; align-items: center; gap: 16px; padding: 16px 0; border-bottom: var(--glass-border); }
+.cart-item { 
+  display: flex; 
+  align-items: center; 
+  gap: 16px; 
+  padding: 16px; 
+  border-bottom: var(--glass-border); 
+  transition: all var(--transition-fast);
+}
 .cart-item:last-child { border-bottom: none; }
+.cart-item:hover { 
+  background: rgba(255, 255, 255, 0.02); 
+  border-radius: 12px; 
+}
 .cart-item-img { width: 60px; height: 60px; background: rgba(0,0,0,0.2); border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; border: var(--glass-border); }
 .cart-item-img img { width: 90%; height: 90%; object-fit: contain; }
-.cart-item-info { flex: 1; }
+.cart-item-info { flex: 1; cursor: pointer; }
 .cart-item-info h4 { margin: 0 0 6px 0; font-size: 15px; font-weight: 600; color: var(--text-main); }
 .cart-item-info p { margin: 0; color: var(--accent); font-weight: 700; font-size: 14px; }
 
@@ -618,7 +672,7 @@ body {
   font-weight: 600;
   font-size: 15px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--transition-fast);
 }
 
 .clear-cart-btn-modal:hover {
@@ -629,9 +683,9 @@ body {
 .admin-form { display: flex; flex-direction: column; gap: 16px; overflow-y: auto; scrollbar-width: none; }
 .input-box { display: flex; flex-direction: column; gap: 8px; }
 .input-box label { font-size: 13px; font-weight: 600; color: var(--text-alt); text-transform: uppercase; letter-spacing: 0.5px; }
-.admin-form input, .admin-form textarea { background: rgba(0,0,0,0.2); border: var(--glass-border); border-radius: var(--radius-sm); padding: 14px; font-size: 15px; color: var(--text-main); outline: none; transition: all 0.2s; }
+.admin-form input, .admin-form textarea { background: rgba(0,0,0,0.2); border: var(--glass-border); border-radius: var(--radius-sm); padding: 14px; font-size: 15px; color: var(--text-main); outline: none; transition: all var(--transition-fast); }
 .admin-form input:focus, .admin-form textarea:focus { border-color: var(--accent); background: rgba(0,0,0,0.4); }
-.file-uploader { background: rgba(255,255,255,0.05); border: 1px dashed rgba(255,255,255,0.2); padding: 20px; text-align: center; border-radius: var(--radius-sm); cursor: pointer; font-size: 14px; font-weight: 600; color: var(--text-main); transition: all 0.2s; }
+.file-uploader { background: rgba(255,255,255,0.05); border: 1px dashed rgba(255,255,255,0.2); padding: 20px; text-align: center; border-radius: var(--radius-sm); cursor: pointer; font-size: 14px; font-weight: 600; color: var(--text-main); transition: all var(--transition-fast); }
 .file-uploader:hover { background: rgba(255,255,255,0.1); border-color: var(--accent); }
 .file-uploader input { display: none; }
 .file-ready-tag { font-size: 13px; color: #4ade80; display: flex; align-items: center; gap: 6px; margin-top: 8px;}
@@ -654,7 +708,8 @@ body {
   width: calc(100% - 32px);
   max-width: 508px;
   background: var(--accent);
-  border-radius: var(--radius-lg);
+  backdrop-filter: blur(12px);
+  border-radius: 20px;
   padding: 16px 24px;
   display: flex;
   justify-content: space-between;
@@ -735,11 +790,11 @@ body {
   align-items: center;
   background: rgba(0, 0, 0, 0.2);
   border: 1px solid transparent;
-  border-radius: var(--radius-sm);
+  border-radius: 12px;
   padding: 0 16px;
   margin-bottom: 12px;
   height: 52px;
-  transition: all 0.2s ease;
+  transition: all var(--transition-fast);
 }
 
 .checkout-input-field:focus-within {
@@ -762,14 +817,14 @@ body {
   width: 100%;
   background: rgba(0, 0, 0, 0.2);
   border: 1px solid transparent;
-  border-radius: var(--radius-sm);
+  border-radius: 12px;
   padding: 16px;
   color: var(--text-main);
   font-size: 15px;
   font-family: inherit;
   resize: none;
   box-sizing: border-box;
-  transition: all 0.2s ease;
+  transition: all var(--transition-fast);
 }
 
 .checkout-textarea:focus {
@@ -793,7 +848,7 @@ body {
   border-radius: var(--radius-md);
   padding: 16px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all var(--transition-fast);
 }
 
 .delivery-option:hover {
@@ -830,7 +885,7 @@ body {
   border: 2px solid var(--text-alt);
   background: transparent;
   position: relative;
-  transition: all 0.2s;
+  transition: all var(--transition-fast);
 }
 
 .delivery-option.active .radio-dot {
@@ -854,7 +909,7 @@ body {
   left: 50%;
   transform: translateX(-50%);
   width: 100%;
-  max-width: 540px;
+  max-width: 560px;
   background: rgba(15, 23, 42, 0.85);
   backdrop-filter: var(--blur-lg);
   border-top: var(--glass-border);
@@ -866,16 +921,16 @@ body {
 
 .confirm-order-btn {
   width: 100%;
-  background: var(--accent);
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
   color: #ffffff;
   border: none;
   border-radius: var(--radius-md);
-  height: 54px;
+  height: 56px;
   font-size: 16px;
   font-weight: 700;
   cursor: pointer;
-  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
-  transition: all 0.2s;
+  box-shadow: 0 4px 20px rgba(59, 130, 246, 0.35);
+  transition: all var(--transition-fast);
 }
 
 .confirm-order-btn:hover { background: var(--accent-dark); transform: translateY(-1px); }
@@ -897,8 +952,8 @@ body {
   background: var(--bg-card);
   backdrop-filter: var(--blur-md);
   border: var(--glass-border);
-  padding: 40px 24px;
-  border-radius: var(--radius-lg);
+  padding: 48px 32px;
+  border-radius: 28px;
   max-width: 400px;
   width: 100%;
   box-shadow: var(--shadow-lg);
